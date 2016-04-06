@@ -10,31 +10,28 @@ def output_poll_and_write(read_handle, write_handle):
         write_handle.write(line)
         write_handle.flush()
 
+
+def read_gdb_output(read_fd):
+    print "here"
+    content = ""
+    while "The program is not being run" not in content:
+        content = os.read(read_fd, 1000)
+        print content
+
 def debug(file_to_debug):
     output_file = open('output_' + file_to_debug, 'w')
     proc = subprocess.Popen(['gdb', file_to_debug], stdout=subprocess.PIPE,
     stderr=subprocess.STDOUT, stdin=subprocess.PIPE)
-#    writer = Process(target=output_poll_and_write, args=(proc.stdout, output_file))
- #   writer.start()
-    #output_file.write(proc.stdout.readline())
     fd = proc.stdout.fileno()
-    print os.fstat(fd)
-    print os.read(fd, 1000)
-    print os.fstat(fd)
-    print os.read(fd, 1000)
-    print os.fstat(fd)
-    print proc.stdout.readline()
+    writer = Process(target=read_gdb_output, args=[fd])
+    writer.start()
     proc.stdin.write('b main\n')
-    print os.fstat(fd)
-  #  output_file.write('b main\n(gdb) ')
     proc.stdin.write('run\n')
 #    while proc.poll() is None:
-    for i in range(20):
-       #output_file.write(last_output)
-        proc.stdin.write('info frame\n') 
-        proc.stdin.write('step\n')
-        print "step"
-   # writer.join()
+    for i in range(150):
+        proc.stdin.write('frame\n') 
+        proc.stdin.write('next\n')
+    writer.join()
 
 
 def main():
