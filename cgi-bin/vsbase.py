@@ -6,7 +6,7 @@ import os                             # of the imports to work!
 import web
 from jinja2 import Environment, FileSystemLoader
 
-######################BEGIN HELPER METHODS######################
+import gdb_writer
 
 
 # helper method to render a template in the templates/ directory
@@ -16,9 +16,6 @@ from jinja2 import Environment, FileSystemLoader
 # `**context': a dictionary of variable names mapped to values
 # that is passed to Jinja2's templating engine
 #
-# See curr_time's `GET' method for sample usage
-#
-# WARNING: DO NOT CHANGE THIS METHOD
 def render_template(template_name, **context):
     extensions = context.pop('extensions', [])
     globals = context.pop('globals', {})
@@ -34,7 +31,7 @@ def render_template(template_name, **context):
     return jinja_env.get_template(template_name).render(context)
 
 urls = ('/visualstack', 'visual_stack')
-
+#writer = None
 
 class visual_stack:
   def GET(self):
@@ -43,14 +40,16 @@ class visual_stack:
     post_params = web.input()
     gdb_command = post_params['gdb_command']
     # pass this gdb command into gdb. get output. send to output
-    curr_stack = None # populate this
+    #writer.step()
+    curr_stack = gdb_command
     return render_template('vs.html', stack = curr_stack)
 
-###########################################################################################
-##########################DO NOT CHANGE ANYTHING BELOW THIS LINE!##########################
-###########################################################################################
-
 if __name__ == '__main__':
+    if len(sys.argv) != 3:
+      print "Usage: python vsbase.py <port number> <executable to debug>"
+      exit(0)
+    writer = gdb_writer.GDBWriter(sys.argv[2])
+    writer.debug()
     web.internalerror = web.debugerror
     app = web.application(urls, globals())
     app.run()
