@@ -2,6 +2,7 @@ import subprocess
 import multiprocessing
 import sys
 import os
+import stackshot
 
 def read_gdb_output(read_fd, output_queue):
     while True:
