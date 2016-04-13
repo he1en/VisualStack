@@ -19,9 +19,9 @@ class GDBRunner:
     self.collector = multiprocessing.Process(target=self.read_gdb_output, \
                                              args=[fd])
     self.collector.start()
-    self.collect_output()
+    self.collect_output('step')
 
-  def collect_output(self):
+  def collect_output(self, command):
     output = ''
     while "(gdb)" not in output:
       output += self.output_queue.get()
@@ -29,12 +29,12 @@ class GDBRunner:
         self.running = False
 
     self.output_file.write(output)
-    self.stackshot.ingest_step(output)
+    self.stackshot.ingest(output, command)
 
   def send(self, command):
     self.output_file.write(command + '\n')
     self.proc.stdin.write(command + '\n')
-    self.collect_output()
+    self.collect_output(command)
 
   def read_gdb_output(self, read_fd):
     while True:
@@ -47,17 +47,19 @@ class GDBRunner:
     self.send('run')
 
   def step(self):
+    ''' Generator which steps once in gdb and yields a stackshot object
+        describing the new stack. '''
     # hacky? 'run' yields first real stack
-    yield self.stackshot.stringify()
+    yield self.stackshot
     latest_output = ""
     while self.running:
       self.send('step')
-      yield self.stackshot.stringify()
+      yield self.stackshot
 
   def run_to_completion(self):
     ''' To be called AFTER debug. '''
     for output in self.step():
-      print output
+      print output.stringify() # or do something better with it?
     self.terminate()
 
   def terminate(self):
