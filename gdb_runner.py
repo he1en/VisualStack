@@ -54,6 +54,7 @@ class GDBRunner:
     latest_output = ""
     while self.running:
       self.send('step')
+      self.send('info registers')
       yield self.stackshot
 
   def run_to_completion(self):
