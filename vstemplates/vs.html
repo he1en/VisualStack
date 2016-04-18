@@ -1,0 +1,17 @@
+{% extends "app_base.html" %}
+{% block content %}
+{# include the first two lines above to extend the app_base template #}
+
+<form method="POST" action="visualstack" style="max-width:400px; width:100%">
+  <div class="form-group">
+    <input type="text" name="gdb_command" class="form-control" id="gdb_command" />
+  </div>
+  <input type="submit" value="Step" class="btn btn-primary" /></div>
+</form>
+
+
+  <h3>Visual Stack</h3>
+  <div class="alert alert-info">Current stack looks like: {{ stack }}</div>
+{# also make sure to include this very last line as well #}
+{% endblock %}
+
