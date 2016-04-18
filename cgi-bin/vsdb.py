@@ -42,9 +42,9 @@ def getContentsForStep(step):
     return None
   return result[0]
 
-def step(curr_step):
+def setStep(curr_step):
   query_string = 'update CurrStep set StepNum = $nextStep'
-  return querySuccess(query_string, {'nextStep': curr_step + 1})
+  return querySuccess(query_string, {'nextStep': curr_step})
 
 def addStep(step_num, contents):
   query_string = 'insert into StackFrame values($stepNum, $line, $rsp, $rbp, $rax, $rbx, $rcx, $rdx, $rsi, $rdi, $r8, $r9, $r10, $r11, $r12, $r13, $r14, $r15)'
@@ -66,7 +66,7 @@ def runnerStep(contents):
   try:
     currStep = getCurrStep()
     addStep(currStep, contents)
-    step(currStep)
+    setStep(currStep + 1)
   except Exception as e:
     t.rollback()
     print str(e)
