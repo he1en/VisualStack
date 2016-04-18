@@ -50,7 +50,7 @@ class visual_stack:
     try:
       currStep = vsdb.getCurrStep()
       contents = vsdb.getContentsForStep(currStep)
-      vsdb.step(currStep)
+      vsdb.setStep(currStep+1)
       if contents is not None:
         curr_stack = contents
     except Exception as e:
