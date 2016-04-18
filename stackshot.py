@@ -2,6 +2,7 @@
 # Stack Shot Class
 # 
 ########################################
+import re
 
 class StackShot:
 
@@ -26,19 +27,34 @@ class StackShot:
       'r15': None
     }
     self.words = {}
+    self.saved_rbp = None
 
   def stringify(self):
     return self.line
 
   def ingest(self, data, command):
+    data = data.replace('\n(gdb)', '')
     try:
       {
+        'next': self.ingest_step,
         'step': self.ingest_step,
-        'info registers': self.ingest_all_registers
+        'info registers': self.ingest_all_registers,
+        'x/1xg $rbp': self.ingest_saved_rbp
       }[command](data)
     except KeyError:
+      address = re.match('^x/1xg (0x[a-f\d]+)$', command)
+      if address:
+        self.ingest_address_examine(address.group(1), data)
+        return
       print "Cannot ingest data from gdb command %s." % command 
     
+  def ingest_saved_rbp(self, data):
+    self.saved_rbp = data.split(":")[-1].strip()
+    
+  def ingest_address_examine(self, address, data):
+    self.words[address] = data.split(":")[-1].strip()
+    print self.words
+
   def ingest_all_registers(self, data):
     if "The program has no registers now" in data:
       return
@@ -48,11 +64,23 @@ class StackShot:
 
 
   def ingest_step(self, new_data):
-    last_line = new_data.split('\n')[-2] # actual last line is (gdb)
+    last_line = new_data.split('\n')[-1]
     self.line = last_line
 
-    # ingestion methods from raw gdb output
 
-    # formatting of register / stack info as different lengths of memory,
-    # ptrs, etc
+  def frame_addresses(self):
+    addresses = []
+    # above base pointer
+
+    addresses.append(self.regs['rbp'])
+    # below base pointer
+    rbp_int = int(self.regs['rbp'], 16)
+    rsp_int = int(self.regs['rsp'], 16)
+    num_below = (rbp_int - rsp_int) / 8
+    for i in range(1, num_below):
+      addresses.append(hex(rbp_int + i * 8) )
+    return addresses
+
+# formatting of register / stack info as different lengths of memory,
+# ptrs, etc
         

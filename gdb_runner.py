@@ -45,6 +45,14 @@ class GDBRunner:
     self.running = True
     self.send('b main')
     self.send('run')
+    self.capture_stack()
+
+  def capture_stack(self, capture_registers=True):
+    if capture_registers:
+      self.send('info registers')
+    self.send('x/1xg $rbp')
+    for address in self.stackshot.frame_addresses():
+      self.send('x/1xg %s' % address)
 
   def step(self):
     ''' Generator which steps once in gdb and yields a stackshot object
@@ -54,7 +62,7 @@ class GDBRunner:
     latest_output = ""
     while self.running:
       self.send('step')
-      self.send('info registers')
+      self.capture_stack()
       yield self.stackshot
 
   def run_to_completion(self):
