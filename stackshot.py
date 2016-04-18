@@ -9,22 +9,22 @@ class StackShot:
   def __init__(self):
     self.line = None  # String, last line number
     self.regs = {
-      'rsp': None,
-      'rbp': None,
-      'rax': None,
-      'rbx': None,
-      'rcx': None,
-      'rdx': None,
-      'rsi': None,
-      'rdi': None,
-      'r8': None,
-      'r9': None,
-      'r10': None,
-      'r11': None,
-      'r12': None,
-      'r13': None,
-      'r14': None,
-      'r15': None
+      'rsp': 'N/A',
+      'rbp': 'N/A',
+      'rax': 'N/A',
+      'rbx': 'N/A',
+      'rcx': 'N/A',
+      'rdx': 'N/A',
+      'rsi': 'N/A',
+      'rdi': 'N/A',
+      'r8': 'N/A',
+      'r9': 'N/A',
+      'r10': 'N/A',
+      'r11': 'N/A',
+      'r12': 'N/A',
+      'r13': 'N/A',
+      'r14': 'N/A',
+      'r15': 'N/A'
     }
     self.words = {}
     self.saved_rbp = None
