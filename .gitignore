@@ -30,3 +30,29 @@
 
 # Debug files
 *.dSYM/
+
+
+.suexecd
+AuctionBase.db
+VisualStack.db
+auctionbase.py
+constraints_verify.sql
+create.sql
+createDatabase.sh
+json_parser.py
+lib/
+load.txt
+output_simple_int
+phpinfo.php
+printenv.pl
+runParser.sh
+simple_gdb_writer.py
+simple_int
+sqlitedb.py
+sqlitedb.pyc
+stackshot.pyc
+templates/
+test
+trigger*.sql
+web
+webpy/
