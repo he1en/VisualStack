@@ -53,7 +53,6 @@ class StackShot:
     
   def ingest_address_examine(self, address, data):
     self.words[address] = data.split(":")[-1].strip()
-    print self.words
 
   def ingest_all_registers(self, data):
     if "The program has no registers now" in data:
