@@ -2,6 +2,7 @@ import subprocess
 import multiprocessing
 import sys
 import os
+import vsdb
 import stackshot
 
 class GDBRunner:
@@ -43,6 +44,7 @@ class GDBRunner:
 
   def debug(self):
     self.running = True
+    vsdb.setStep(0)
     self.send('b main')
     self.send('run')
     self.capture_stack()
@@ -68,14 +70,14 @@ class GDBRunner:
   def run_to_completion(self):
     ''' To be called AFTER debug. '''
     for output in self.step():
-      print output.stringify() # or do something better with it?
+      vsdb.runnerStep(output)
     self.terminate()
 
   def terminate(self):
     self.proc.terminate()
     self.collector.terminate()
     self.output_file.close()
-
+    vsdb.setStep(0)
 
 def main():
   if len(sys.argv) != 2:
@@ -89,7 +91,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-
-    
