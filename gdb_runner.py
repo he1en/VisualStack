@@ -42,12 +42,22 @@ class GDBRunner:
       content = os.read(read_fd, 1000)
       self.output_queue.put(content)
 
+  def skip_other_sources(self):
+    self.send('info source')
+    self.send('info sources')
+
+    for src_file in self.stackshot.src_files:
+      if src_file != self.stackshot.main_file:
+        self.send('skip file %s' % src_file)
+
   def debug(self):
     self.running = True
     vsdb.setStep(0)
     self.send('b main')
     self.send('run')
+    self.skip_other_sources()
     self.capture_stack()
+
 
   def capture_stack(self, capture_registers=True):
     if capture_registers:

@@ -28,6 +28,14 @@ class StackShot:
     }
     self.words = {}
     self.saved_rbp = None
+    self.main_file = None
+    self.src_files = []
+
+    self.no_action_commands = [
+      'b main',
+      'run',
+      'skip .+'
+    ]
 
   def stringify(self):
     return self.line
@@ -39,15 +47,30 @@ class StackShot:
         'next': self.ingest_step,
         'step': self.ingest_step,
         'info registers': self.ingest_all_registers,
+        'info sources': self.ingest_sources,
+        'info source': self.ingest_main_file,
         'x/1xg $rbp': self.ingest_saved_rbp
       }[command](data)
     except KeyError:
+      if command in self.no_action_commands:
+        return
+
       address = re.match('^x/1xg (0x[a-f\d]+)$', command)
       if address:
         self.ingest_address_examine(address.group(1), data)
         return
       print "Cannot ingest data from gdb command %s." % command 
     
+  def ingest_sources(self, data):
+    for src_file in data.split(', '):
+      if "Source files for which" in src_file:
+        continue
+      if src_file[-2:] == '.c':
+        self.src_files.append(src_file.strip())
+
+  def ingest_main_file(self, data):
+    self.main_file = re.match('Current source file is (.+)\n', data).group(1)
+
   def ingest_saved_rbp(self, data):
     self.saved_rbp = data.split(":")[-1].strip()
     
