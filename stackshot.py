@@ -14,6 +14,11 @@ class StackShot:
     self.line = None  # String, last line number
     self.regs = {r: 'N/A' for r in regs}
     self.words = {}
+    self.ordered_addresses = []
+
+    self.changed_regs = []
+    self.changed_words = []
+
     self.saved_rbp = None
     self.main_file = None
     self.src_files = []
@@ -34,7 +39,7 @@ class StackShot:
       {
         'next': self.ingest_step,
         'step': self.ingest_step,
-        'info registers': self.ingest_all_registers,
+        'info registers': self.ingest_registers,
         'info sources': self.ingest_sources,
         'info source': self.ingest_main_file,
         'x/1xg $rbp': self.ingest_saved_rbp
@@ -61,36 +66,54 @@ class StackShot:
 
   def ingest_saved_rbp(self, data):
     self.saved_rbp = data.split(":")[-1].strip()
-    
-  def ingest_address_examine(self, address, data):
-    self.words[address] = data.split(":")[-1].strip()
 
-  def ingest_all_registers(self, data):
-    if "The program has no registers now" in data:
-      return
+  def ingest_address_examine(self, address, data):
+    contents = data.split(":")[-1].strip()
+    if address not in self.words or self.words[address] != contents:
+      self.words[address] = contents
+      self.changed_words.append(address)
+      if address not in self.ordered_addresses:
+        self.ordered_addresses.append(address)
+        self.ordered_addresses.sort(key = lambda addr: int(addr, 16), reverse=True)
+
+  def ingest_registers(self, data):
+    self.changed_regs = []
     for register_output in data.split("\n")[:16]: # only want first 16
       register, contents = register_output.split()[:2]
-      self.regs[register] = contents
-
+      if self.regs[register] != contents:
+        self.changed_regs.append(register)
+        self.regs[register] = contents
 
   def ingest_step(self, new_data):
     last_line = new_data.split('\n')[-1]
     self.line = last_line
 
+  def clear_changed_words(self):
+    self.changed_words = []
 
   def frame_addresses(self):
+    ''' Collects all stack addresses in current frame in descending order. '''
     addresses = []
-    # above base pointer
-
-    addresses.append(self.regs['rbp'])
-    # below base pointer
     rbp_int = int(self.regs['rbp'], 16)
     rsp_int = int(self.regs['rsp'], 16)
+    saved_rbp_int = int(self.saved_rbp, 16)
+
+    # Collect memory above base pointer until saved base pointer
+    if saved_rbp_int == 0:
+      # If saved_rbp is 0x0, we are in main.
+      num_above = 0
+    else:
+      num_above = (saved_rbp_int - rbp_int) / 8
+
+    for i in range(num_above):
+      addresses.append(hex(saved_rbp_int - i * 8))
+      
+    addresses.append(self.regs['rbp'])
+
+    # Collect memory below base pointer until stack pointer
     num_below = (rbp_int - rsp_int) / 8
     for i in range(1, num_below):
-      addresses.append(hex(rbp_int + i * 8) )
+      addresses.append(hex(rbp_int - i * 8) )
+
     return addresses
 
-# formatting of register / stack info as different lengths of memory,
-# ptrs, etc
-        

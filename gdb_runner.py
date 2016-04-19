@@ -29,6 +29,8 @@ class GDBRunner:
       if "program is not being run" in output:
         self.running = False
 
+    if command == 'step' and "exit(0)" in output:
+      self.running = False
     self.output_file.write(output)
     self.stackshot.ingest(output, command)
 
@@ -60,9 +62,13 @@ class GDBRunner:
 
 
   def capture_stack(self, capture_registers=True):
+    if not self.running:
+      return
+
     if capture_registers:
       self.send('info registers')
     self.send('x/1xg $rbp')
+    self.stackshot.clear_changed_words()
     for address in self.stackshot.frame_addresses():
       self.send('x/1xg %s' % address)
 
