@@ -4,28 +4,15 @@
 ########################################
 import re
 
+regs = ['rsp', 'rbp', 'rax', 'rbx', 'rcx', 'rdx', 'rsi', 'rdi',
+        'r8', 'r9', 'r10', 'r11', 'r12', 'r13', 'r14', 'r15']
+
+
 class StackShot:
 
   def __init__(self):
     self.line = None  # String, last line number
-    self.regs = {
-      'rsp': 'N/A',
-      'rbp': 'N/A',
-      'rax': 'N/A',
-      'rbx': 'N/A',
-      'rcx': 'N/A',
-      'rdx': 'N/A',
-      'rsi': 'N/A',
-      'rdi': 'N/A',
-      'r8': 'N/A',
-      'r9': 'N/A',
-      'r10': 'N/A',
-      'r11': 'N/A',
-      'r12': 'N/A',
-      'r13': 'N/A',
-      'r14': 'N/A',
-      'r15': 'N/A'
-    }
+    self.regs = {r: 'N/A' for r in regs}
     self.words = {}
     self.saved_rbp = None
     self.main_file = None
@@ -38,6 +25,7 @@ class StackShot:
     ]
 
   def stringify(self):
+    # TODO: make this useful
     return self.line
 
   def ingest(self, data, command):

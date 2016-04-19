@@ -11,7 +11,11 @@
 
 
   <h3>Visual Stack</h3>
-  <div class="alert alert-info">Current stack looks like: {{ stack }}</div>
+  {% if stack %}
+  <div class="alert alert-info">Current line: {{ stack.line }}</div>
+  <div class="alert alert-info">Registers: {{ stack.regs }}</div>
+  <div class="alert alert-info">Words: {{ stack.words }}</div>
+  {% endif %}
 {# also make sure to include this very last line as well #}
 {% endblock %}
 

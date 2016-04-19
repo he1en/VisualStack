@@ -1,19 +1,18 @@
 import web
+import stackshot
 
-db = web.database(dbn='sqlite',
-        db='VisualStack.db'
-    )
+db = web.database(dbn='sqlite', db='VisualStack.db')
 
 ######################BEGIN HELPER METHODS######################
 
 # Enforce foreign key constraints
 # WARNING: DO NOT REMOVE THIS!
 def enforceForeignKey():
-    db.query('PRAGMA foreign_keys = ON')
+  db.query('PRAGMA foreign_keys = ON')
 
 # initiates a transaction on the database
 def transaction():
-    return db.transaction()
+  return db.transaction()
 # Sample usage (in auctionbase.py):
 #
 # t = sqlitedb.transaction()
@@ -29,32 +28,54 @@ def transaction():
 # check out http://webpy.org/cookbook/transactions for examples
 
 def getCurrStep():
-    query_string = 'select StepNum from CurrStep'
-    results = query(query_string)
-    # alternatively: return results[0]['currenttime']
-    return results[0].StepNum
+  query_string = 'select StepNum from CurrStep'
+  results = query(query_string)
+  # alternatively: return results[0]['currenttime']
+  return results[0].StepNum
 
 def getContentsForStep(step):
-  query_string = 'select LineContents from StackFrame where StepNum = $stepNum'
-  result = query(query_string, {'stepNum': step})
-  # TODO: get entire stackshot including words content from StackWords table
-  if result is None or len(result) == 0:
+  input_vars = {'stepNum': step}
+  query_string1 = 'select * from StackFrame where StepNum = $stepNum'
+  query_string2 = 'select * from StackWords where StepNum = $stepNum'
+  result1 = query(query_string1, input_vars)
+  if result1 is None or len(result1) == 0:
     return None
-  return result[0]
+  result2 = query(query_string2, input_vars)
+  ss = stackshot.StackShot()
+  ss.line = result1[0].LineContents
+  ss.regs['rsp'] = result1[0].RSP
+  ss.regs['rbp'] = result1[0].RBP
+  ss.regs['rax'] = result1[0].RAX
+  ss.regs['rbx'] = result1[0].RBX
+  ss.regs['rcx'] = result1[0].RCX
+  ss.regs['rdx'] = result1[0].RDX
+  ss.regs['rsi'] = result1[0].RSI
+  ss.regs['rdi'] = result1[0].RDI
+  ss.regs['r8'] = result1[0].R8
+  ss.regs['r9'] = result1[0].R9
+  ss.regs['r10'] = result1[0].R10
+  ss.regs['r11'] = result1[0].R11
+  ss.regs['r12'] = result1[0].R12
+  ss.regs['r13'] = result1[0].R13
+  ss.regs['r14'] = result1[0].R14
+  ss.regs['r15'] = result1[0].R15
+  for i in xrange(len(result2)):
+    ss.words[result2[i].MemAddr] = result2[i].MemContents
+  return ss
 
 def setStep(curr_step):
   query_string = 'update CurrStep set StepNum = $nextStep'
   return querySuccess(query_string, {'nextStep': curr_step})
 
 def addStep(step_num, contents):
-  query_string = 'insert into StackFrame values($stepNum, $line, $rsp, $rbp, $rax, $rbx, $rcx, $rdx, $rsi, $rdi, $r8, $r9, $r10, $r11, $r12, $r13, $r14, $r15)'
+  query_string = 'insert into StackFrame values($stepNum, $line'
+  for r in stackshot.regs:
+    query_string += ', $' + r
+  query_string += ')'
   r = contents.regs
-  input_vars = {'stepNum': step_num, 'line': contents.line, 'rsp': r['rsp'],
-                'rbp': r['rbp'], 'rax': r['rax'], 'rbx': r['rbx'],
-                'rcx': r['rcx'], 'rdx': r['rdx'], 'rsi': r['rsi'],
-                'rdi': r['rdi'], 'r8': r['r8'], 'r9': r['r9'], 'r10': r['r10'],
-                'r11': r['r11'], 'r12': r['r12'], 'r13': r['r13'],
-                'r14': r['r14'], 'r15': r['r15']}
+  input_vars = {reg: r[reg] for reg in stackshot.regs}
+  input_vars['stepNum'] = step_num
+  input_vars['line'] = contents.line
   db.query(query_string, input_vars)
   for addr, w in contents.words.iteritems():
     query_string = 'insert into StackWords values($stepNum, $addr, $mem)'
