@@ -73,7 +73,8 @@ class StackShot:
 
   def ingest_saved_rbp(self, data):
     self.saved_rbp = data.split(":")[-1].strip()
-    
+    print "rbp: %s, saved rbp: %s" % (self.regs['rbp'], self.saved_rbp)
+
   def ingest_address_examine(self, address, data):
     self.words[address] = data.split(":")[-1].strip()
 
@@ -91,16 +92,30 @@ class StackShot:
 
 
   def frame_addresses(self):
+    ''' Extracts memory from all stack addresses in current frame in
+        descending order. '''
     addresses = []
-    # above base pointer
-
-    addresses.append(self.regs['rbp'])
-    # below base pointer
     rbp_int = int(self.regs['rbp'], 16)
     rsp_int = int(self.regs['rsp'], 16)
+    saved_rbp_int = int(self.saved_rbp, 16)
+
+    # Collect memory above base pointer until saved base pointer
+    if saved_rbp_int == 0:
+      # If saved_rbp is 0x0, we are in main.
+      num_above = 2
+    else: 
+      num_above  = (saved_rbp_int - rbp_int) / 8
+
+    for i in range(num_above):
+      addresses.append(hex(saved_rbp_int - i * 8))
+      
+    addresses.append(self.regs['rbp'])
+
+    # Collect memory below base pointer until stack pointer
     num_below = (rbp_int - rsp_int) / 8
     for i in range(1, num_below):
-      addresses.append(hex(rbp_int + i * 8) )
+      addresses.append(hex(rbp_int - i * 8) )
+    print addresses
     return addresses
 
 # formatting of register / stack info as different lengths of memory,
