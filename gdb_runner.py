@@ -68,6 +68,7 @@ class GDBRunner:
     if capture_registers:
       self.send('info registers')
     self.send('x/1xg $rbp')
+    self.stackshot.clear_changed_words()
     for address in self.stackshot.frame_addresses():
       self.send('x/1xg %s' % address)
 
