@@ -17,8 +17,8 @@ class StackShot:
     self.ordered_addresses = []
     self.ordered_regs = regs
 
-    self.changed_regs = []
-    self.changed_words = []
+    self.changed_regs = set()
+    self.changed_words = set()
 
     self.saved_rbp = None
     self.main_file = None
@@ -54,9 +54,9 @@ class StackShot:
     self.ordered_addresses = sorted(self.words.keys(), key = lambda addr: int(addr, 16), reverse=True)
     for i in xrange(len(changes)):
       if changes[i].ChangeType == 'REGISTER':
-        self.changed_regs.append(changes[i].ChangeAddr)
+        self.changed_regs.add(changes[i].ChangeAddr)
       elif changes[i].ChangeType == 'WORD':
-        self.changed_words.append(changes[i].ChangeAddr)
+        self.changed_words.add(changes[i].ChangeAddr)
 
   def stringify(self):
     # TODO: make this useful
@@ -100,14 +100,14 @@ class StackShot:
     contents = data.split(":")[-1].strip()
     if address not in self.words or self.words[address] != contents:
       self.words[address] = contents
-      self.changed_words.append(address)
+      self.changed_words.add(address)
 
   def ingest_registers(self, data):
-    self.changed_regs = []
+    self.changed_regs = set()
     for register_output in data.split("\n")[:16]: # only want first 16
       register, contents = register_output.split()[:2]
       if self.regs[register] != contents:
-        self.changed_regs.append(register)
+        self.changed_regs.add(register)
         self.regs[register] = contents
 
   def ingest_step(self, new_data):
@@ -115,7 +115,7 @@ class StackShot:
     self.line = last_line
 
   def clear_changed_words(self):
-    self.changed_words = []
+    self.changed_words = set()
 
   def frame_addresses(self):
     ''' Collects all stack addresses in current frame in descending order. '''

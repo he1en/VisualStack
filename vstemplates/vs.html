@@ -23,7 +23,11 @@
     </tr>
     <tr>
       {% for regname in stack.ordered_regs %}
+      {% if regname in stack.changed_regs %}
+      <td><b>{{ stack.regs[regname] }}</b></td>
+      {% else %}
       <td>{{ stack.regs[regname] }}</td>
+      {% endif %}
       {% endfor %}
     </tr>
   </table> 
@@ -37,7 +41,11 @@
   {% for k in stack.ordered_addresses %}
     <tr>
       <td>{{ k }}</td>
-      <td> {{ stack.words[k] }} </td>
+      {% if k in stack.changed_words %}
+      <td><b>{{ stack.words[k] }}</b></td>
+      {% else %}
+      <td>{{ stack.words[k] }}</td>
+      {% endif %}
     </tr>
   {% endfor %}
   </table>
