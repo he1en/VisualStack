@@ -9,12 +9,38 @@
   <input type="submit" value="Step" class="btn btn-primary" /></div>
 </form>
 
-
   <h3>Visual Stack</h3>
   {% if stack %}
   <div class="alert alert-info">Current line: {{ stack.line }}</div>
   <div class="alert alert-info">Registers: {{ stack.regs }}</div>
-  <div class="alert alert-info">Words: {{ stack.words }}</div>
+
+  <table border="1" style="width:50%">
+    <tr>
+      {% for regname in stack.ordered_regs %}
+      <td> {{ regname }}</td>
+      {% endfor %}
+    </tr>
+    <tr>
+      {% for regname in stack.ordered_regs %}
+      <td>{{ stack.regs[regname] }}</td>
+      {% endfor %}
+    </tr>
+  </table> 
+
+  <table border="1" style="width:50%">
+    <tr>
+      <td>Address</td>
+      <td>Memory Contents</td>
+    </tr>
+  {% for k in stack.ordered_addresses %}
+    <tr>
+      <td>{{ k }}</td>
+      <td> {{ stack.words[k] }} </td>
+    </tr>
+  {% endfor %}
+  </table>
+
+  {# <div class="alert alert-info">Words: {{ stack.words }}</div> #}
   {% endif %}
 {# also make sure to include this very last line as well #}
 {% endblock %}

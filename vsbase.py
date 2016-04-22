@@ -45,7 +45,7 @@ class visual_stack:
     #globals()['writer'].step()
 
     # for vsdb, get current step, get output, increment stepper
-    curr_stack = 'Something failed :('
+    curr_stack = None
     t = vsdb.transaction()
     try:
       currStep = vsdb.getCurrStep()
