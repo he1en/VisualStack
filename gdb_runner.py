@@ -11,6 +11,8 @@ class GDBRunner:
     self.c_filename = cfilename # uncompiled .c file
     with open(self.c_filename) as f:
       self.code_lines = f.readlines()
+    self.code_lines = [str(i+1) + '\t' + self.code_lines[i] for i in xrange(len(self.code_lines))]
+    self.save_code()
 
     self.stackshot = stackshot.StackShot()
     self.running = False
@@ -27,6 +29,9 @@ class GDBRunner:
                                              args=[fd])
     self.collector.start()
     self.collect_output('step')
+
+  def save_code(self):
+    vsdb.writeCode(self.code_lines)
 
   def collect_output(self, command):
     output = ''

@@ -49,6 +49,20 @@ def getContentsForStep(step):
   ss.hydrate_from_db(result1, result2, result3)
   return ss
 
+# writes the entire code file to the db
+def writeCode(code_lines):
+  query_list = ['insert into Code values ']
+  input_vars = {}
+  for i in xrange(len(code_lines)):
+    query_list.append('($linenum' + str(i+1) + ',$line' + str(i+1) + ')')
+    # query_list.append('(' + str(i+1) + ',' + code_lines[i] + ')')
+    query_list.append(',')
+    input_vars['linenum'+str(i+1)] = i
+    input_vars['line'+str(i+1)] = code_lines[i]
+  query_list[-1] = ';'
+  print ''.join(query_list)
+  return querySuccess(''.join(query_list), input_vars)
+
 # sets the curr step in db to be the input
 def setStep(curr_step):
   query_string = 'update CurrStep set StepNum = $nextStep'
@@ -57,13 +71,14 @@ def setStep(curr_step):
 # never invoked by clients of this module
 # adds input contents (StackShot) into the db for the input step_num
 def addStep(step_num, contents):
-  query_string = 'insert into StackFrame values($stepNum, $line'
+  query_string = 'insert into StackFrame values($stepNum, $linenum, $line'
   for r in stackshot.regs:
     query_string += ', $' + r
   query_string += ')'
   r = contents.regs
   input_vars = {reg: r[reg] for reg in stackshot.regs}
   input_vars['stepNum'] = step_num
+  input_vars['linenum'] = contents.line_num
   input_vars['line'] = contents.line
   db.query(query_string, input_vars)
   for addr, w in contents.words.iteritems():
