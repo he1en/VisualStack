@@ -12,6 +12,7 @@ class StackShot:
 
   def __init__(self):
     self.line = None  # String, last line number
+    self.line_num = None
     self.regs = {r: 'N/A' for r in regs}
     self.words = {}
     self.ordered_addresses = []
@@ -123,6 +124,7 @@ class StackShot:
   def ingest_step(self, new_data):
     last_line = new_data.split('\n')[-1]
     self.line = last_line
+    self.line_num = last_line.split()[0]
 
   def clear_changed_words(self):
     self.changed_words = set()
