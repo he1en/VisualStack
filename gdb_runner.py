@@ -7,11 +7,13 @@ import stackshot
 
 class GDBRunner:
 
-  def __init__(self, filename):
-    self.filename = filename
+  def __init__(self, cfilename):
+    self.c_filename = cfilename # uncompiled .c file
     self.stackshot = stackshot.StackShot()
     self.running = False
 
+    self.filename = self.c_filename.replace('.c', '') # compiled file
+    subprocess.call(['gcc', self.c_filename, '-o', self.filename, '-g'])
     self.output_file = open('output_' + self.filename, 'w')
     self.proc = subprocess.Popen(['gdb', self.filename], \
       stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.PIPE)
@@ -96,8 +98,8 @@ class GDBRunner:
     vsdb.setStep(0)
 
 def main():
-  if len(sys.argv) != 2:
-    print "Usage: python gdb_runner.py <executable to debug>"
+  if len(sys.argv) != 2 or not sys.argv[1].endswith('.c'):
+    print "Usage: python gdb_runner.py <uncompiled c file>"
     exit(0)
 
   runner = GDBRunner(sys.argv[1])

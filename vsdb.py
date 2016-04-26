@@ -27,46 +27,35 @@ def transaction():
 #
 # check out http://webpy.org/cookbook/transactions for examples
 
+# returns the number of the current step saved in the db
 def getCurrStep():
   query_string = 'select StepNum from CurrStep'
   results = query(query_string)
   # alternatively: return results[0]['currenttime']
   return results[0].StepNum
 
+# returns a hydrated version of the StackShot for the input step
 def getContentsForStep(step):
   input_vars = {'stepNum': step}
   query_string1 = 'select * from StackFrame where StepNum = $stepNum'
   query_string2 = 'select * from StackWords where StepNum = $stepNum'
+  query_string3 = 'select * from Changes where StepNum = $stepNum'
   result1 = query(query_string1, input_vars)
   if result1 is None or len(result1) == 0:
     return None
   result2 = query(query_string2, input_vars)
+  result3 = query(query_string3, input_vars)
   ss = stackshot.StackShot()
-  ss.line = result1[0].LineContents
-  ss.regs['rsp'] = result1[0].RSP
-  ss.regs['rbp'] = result1[0].RBP
-  ss.regs['rax'] = result1[0].RAX
-  ss.regs['rbx'] = result1[0].RBX
-  ss.regs['rcx'] = result1[0].RCX
-  ss.regs['rdx'] = result1[0].RDX
-  ss.regs['rsi'] = result1[0].RSI
-  ss.regs['rdi'] = result1[0].RDI
-  ss.regs['r8'] = result1[0].R8
-  ss.regs['r9'] = result1[0].R9
-  ss.regs['r10'] = result1[0].R10
-  ss.regs['r11'] = result1[0].R11
-  ss.regs['r12'] = result1[0].R12
-  ss.regs['r13'] = result1[0].R13
-  ss.regs['r14'] = result1[0].R14
-  ss.regs['r15'] = result1[0].R15
-  for i in xrange(len(result2)):
-    ss.words[result2[i].MemAddr] = result2[i].MemContents
+  ss.hydrate_from_db(result1, result2, result3)
   return ss
 
+# sets the curr step in db to be the input
 def setStep(curr_step):
   query_string = 'update CurrStep set StepNum = $nextStep'
   return querySuccess(query_string, {'nextStep': curr_step})
 
+# never invoked by clients of this module
+# adds input contents (StackShot) into the db for the input step_num
 def addStep(step_num, contents):
   query_string = 'insert into StackFrame values($stepNum, $line'
   for r in stackshot.regs:
@@ -80,6 +69,14 @@ def addStep(step_num, contents):
   for addr, w in contents.words.iteritems():
     query_string = 'insert into StackWords values($stepNum, $addr, $mem)'
     input_vars = {'stepNum': step_num, 'addr': addr, 'mem': w}
+    db.query(query_string, input_vars)
+  for change in contents.changed_regs:
+    query_string = 'insert into Changes values($stepNum, $changeType, $changeAddr)'
+    input_vars = {'stepNum': step_num, 'changeType': 'REGISTER', 'changeAddr': change}
+    db.query(query_string, input_vars)
+  for change in contents.changed_words:
+    query_string = 'insert into Changes values($stepNum, $changeType, $changeAddr)'
+    input_vars = {'stepNum': step_num, 'changeType': 'WORD', 'changeAddr': change}
     db.query(query_string, input_vars)
 
 def runnerStep(contents):
