@@ -22,6 +22,9 @@ class StackShot:
     self.changed_words = set()
 
     self.saved_rbp = None
+    self.args = {}
+    self.highest_arg_addr = None
+
     self.main_file = None
     self.src_files = []
 
@@ -59,15 +62,17 @@ class StackShot:
 
   def ingest(self, data, command):
     direct_commands = {
-        'next': self.ingest_step,
-        'step': self.ingest_step,
-        'info registers': self.ingest_registers,
-        'info sources': self.ingest_sources,
-        'info source': self.ingest_main_file,
-        'x/1xg $rbp': self.ingest_saved_rbp
+      'next': self.ingest_step,
+      'step': self.ingest_step,
+      'info registers': self.ingest_registers,
+      'info sources': self.ingest_sources,
+      'info source': self.ingest_main_file,
+      'x/1xg $rbp': self.ingest_saved_rbp,
+      'info args': self.ingest_args
     }
     match_commands = {
-      '^x/1xg (0x[a-f\d]+)$': self.ingest_address_examine
+      '^x/1xg (0x[a-f\d]+)$': self.ingest_address_examine,
+      '^p &(.+)$': self.ingest_arg_address
     }
     no_action_commands = [
       '^b main$',
@@ -155,3 +160,21 @@ class StackShot:
 
     return addresses
 
+  def ingest_args(self, data):
+    self.highest_arg_addr = None
+    self.args = {}
+    for line in data.split('\n'):
+      name, val = line.split(' = ')
+      self.args[name] = [val.strip()]
+
+  def ingest_arg_address(self, arg_name, data):
+    address = data.split()[-1].strip()
+    self.args[arg_name].append(address)
+    if self.highest_arg_addr == None or \
+       int(address, 16) > int(self.highest_arg_addr, 16):
+      self.highest_arg_addr = address
+
+  def arg_names(self):
+    return self.args.keys()
+
+    
