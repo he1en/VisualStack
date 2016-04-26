@@ -72,16 +72,22 @@ class GDBRunner:
     self.capture_stack()
 
 
-  def capture_stack(self, capture_registers=True):
+  def capture_stack(self):
     if not self.running:
       return
 
-    if capture_registers:
-      self.send('info registers')
+    self.send('info registers')
     self.send('x/1xg $rbp')
+
     self.stackshot.clear_changed_words()
     for address in self.stackshot.frame_addresses():
       self.send('x/1xg %s' % address)
+
+    # new stack frame
+    if 'rbp' in self.stackshot.changed_regs:
+      self.send('info args')
+      for arg in self.stackshot.arg_names():
+        self.send('p &%s' % arg)
 
   def step(self):
     ''' Generator which steps once in gdb and yields a stackshot object
