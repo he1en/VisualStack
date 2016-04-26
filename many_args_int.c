@@ -18,7 +18,7 @@ long myfunc(long a, long b, long c, long d, long e, long f, long g,
   return zz + 20;
 }
 
-int main (char *argv[], int argc) {
-  myfunc(1, 1, 1, 1, 1, 1, 1, 1);
+int main (int argc, char *argv[]) {
+  myfunc(1, 2, 3, 4, 5, 6, 7, 8);
    exit(0);
 }
