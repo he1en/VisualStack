@@ -9,11 +9,15 @@ class GDBRunner:
 
   def __init__(self, cfilename):
     self.c_filename = cfilename # uncompiled .c file
+    with open(self.c_filename) as f:
+      self.code_lines = f.readlines()
+
     self.stackshot = stackshot.StackShot()
     self.running = False
 
     self.filename = self.c_filename.replace('.c', '') # compiled file
     subprocess.call(['gcc', self.c_filename, '-o', self.filename, '-g'])
+
     self.output_file = open('output_' + self.filename, 'w')
     self.proc = subprocess.Popen(['gdb', self.filename], \
       stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.PIPE)
