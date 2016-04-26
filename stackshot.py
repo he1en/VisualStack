@@ -24,12 +24,6 @@ class StackShot:
     self.main_file = None
     self.src_files = []
 
-    self.no_action_commands = [
-      'b main',
-      'run',
-      'skip .+'
-    ]
-
   # invoke on a new stackshot instance
   def hydrate_from_db(self, stackframe, stackwords, changes):
     self.line = stackframe[0].LineContents
@@ -63,26 +57,42 @@ class StackShot:
     return self.line
 
   def ingest(self, data, command):
-    data = data.replace('\n(gdb)', '')
-    try:
-      {
+    direct_commands = {
         'next': self.ingest_step,
         'step': self.ingest_step,
         'info registers': self.ingest_registers,
         'info sources': self.ingest_sources,
         'info source': self.ingest_main_file,
         'x/1xg $rbp': self.ingest_saved_rbp
-      }[command](data)
-    except KeyError:
-      if command in self.no_action_commands:
+    }
+    match_commands = {
+      '^x/1xg (0x[a-f\d]+)$': self.ingest_address_examine
+    }
+    no_action_commands = [
+      '^b main$',
+      '^run$',
+      '^skip .+$'
+    ]
+
+    data = data.replace('\n(gdb)', '')
+
+    for direct_command in direct_commands.keys():
+      if direct_command == command:
+        direct_commands[command](data)
         return
 
-      address = re.match('^x/1xg (0x[a-f\d]+)$', command)
-      if address:
-        self.ingest_address_examine(address.group(1), data)
+    for match_command in match_commands.keys():
+      match = re.match(match_command, command)
+      if match:
+        match_commands[match_command](match.group(1), data)
         return
-      print "Cannot ingest data from gdb command %s." % command 
-    
+
+    for no_action_command in no_action_commands:
+      if re.match(no_action_command, command):
+        return
+
+    print "Cannot ingest data from gdb command %s." % command
+      
   def ingest_sources(self, data):
     for src_file in data.split(', '):
       if "Source files for which" in src_file:
