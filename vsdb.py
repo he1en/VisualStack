@@ -49,6 +49,17 @@ def getContentsForStep(step):
   ss.hydrate_from_db(result1, result2, result3)
   return ss
 
+# returns list starting 2 lines before and ending 2 lines after the line number passed in
+def getLocalCode(line_num):
+  if line_num is None:
+    return None
+  #query_string = 'select LineContents from Code order by LineNum asc limit 0, 5'
+  query_string = 'select LineContents from Code order by LineNum asc limit $start, $end'
+  input_vars = {'start': str(max(line_num-3,0)), 'end': 5}
+  #input_vars = {'start': str(max(line_num-3,0)), 'end': str(line_num+2)}
+  q = query(query_string, input_vars)
+  return [l.LineContents for l in query(query_string, input_vars)]
+
 # writes the entire code file to the db
 def writeCode(code_lines):
   query_list = ['insert into Code values ']

@@ -46,6 +46,7 @@ class visual_stack:
 
     # for vsdb, get current step, get output, increment stepper
     curr_stack = None
+    local_code = None
     t = vsdb.transaction()
     try:
       currStep = vsdb.getCurrStep()
@@ -53,12 +54,15 @@ class visual_stack:
       vsdb.setStep(currStep+1)
       if contents is not None:
         curr_stack = contents
+        print 'hello'
+        local_code = vsdb.getLocalCode(contents.line_num)
     except Exception as e:
       t.rollback()
+      print 'its me'
       print str(e)
     else:
       t.commit()
-    return render_template('vs.html', stack = curr_stack)
+    return render_template('vs.html', stack = curr_stack, localcode = local_code)
 
 if __name__ == '__main__':
     if len(sys.argv) != 3:
