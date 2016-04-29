@@ -102,15 +102,16 @@ class GDBRunner:
 
   def run_to_completion(self):
     ''' To be called AFTER debug. '''
+    step = 0
     for output in self.step():
-      vsdb.runnerStep(output)
+      vsdb.runnerStep(step, output)
+      step += 1
     self.terminate()
 
   def terminate(self):
     self.proc.terminate()
     self.collector.terminate()
     self.output_file.close()
-    vsdb.setStep(0)
 
 def main():
   if len(sys.argv) != 2 or not sys.argv[1].endswith('.c'):

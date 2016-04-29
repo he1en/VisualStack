@@ -36,29 +36,44 @@ urls = ('/visualstack', 'visual_stack')
 
 class visual_stack:
   def GET(self):
-    return render_template('vs.html', stack = None)
-  def POST(self):
-    post_params = web.input()
-    gdb_command = post_params['gdb_command']
-    # pass this gdb command into gdb. get output. send to output
-    #print globals()['writer']
-    #globals()['writer'].step()
-
-    # for vsdb, get current step, get output, increment stepper
+    # for vsdb, get current step
     curr_stack = None
     local_code = None
     t = vsdb.transaction()
     try:
       currStep = vsdb.getCurrStep()
       contents = vsdb.getContentsForStep(currStep)
-      vsdb.setStep(currStep+1)
       if contents is not None:
         curr_stack = contents
-        print 'hello'
         local_code = vsdb.getLocalCode(contents.line_num)
     except Exception as e:
       t.rollback()
-      print 'its me'
+      print str(e)
+    else:
+      t.commit()
+    return render_template('vs.html', stack = curr_stack, localcode = local_code)
+  def POST(self):
+    post_params = web.input()
+    step_direction = None
+    if 'step_forward' in post_params:
+      step_direction = 1
+    elif 'step_back' in post_params:
+      step_direction = -1
+    print step_direction
+
+    # for vsdb, get current step, increment stepper in correct direction, get output
+    curr_stack = None
+    local_code = None
+    t = vsdb.transaction()
+    try:
+      currStep = vsdb.getCurrStep()
+      contents = vsdb.getContentsForStep(currStep + step_direction)
+      vsdb.setStep(currStep + step_direction)
+      if contents is not None:
+        curr_stack = contents
+        local_code = vsdb.getLocalCode(contents.line_num)
+    except Exception as e:
+      t.rollback()
       print str(e)
     else:
       t.commit()

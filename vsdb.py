@@ -53,7 +53,6 @@ def getContentsForStep(step):
 def getLocalCode(line_num):
   if line_num is None:
     return None
-  #query_string = 'select LineContents from Code order by LineNum asc limit 0, 5'
   query_string = 'select LineContents from Code order by LineNum asc limit $start, $end'
   input_vars = {'start': str(max(line_num-3,0)), 'end': 5}
   #input_vars = {'start': str(max(line_num-3,0)), 'end': str(line_num+2)}
@@ -105,12 +104,10 @@ def addStep(step_num, contents):
     input_vars = {'stepNum': step_num, 'changeType': 'WORD', 'changeAddr': change}
     db.query(query_string, input_vars)
 
-def runnerStep(contents):
+def runnerStep(step, contents):
   t = transaction()
   try:
-    currStep = getCurrStep()
-    addStep(currStep, contents)
-    setStep(currStep + 1)
+    addStep(step, contents)
   except Exception as e:
     t.rollback()
     print str(e)
