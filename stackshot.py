@@ -33,7 +33,7 @@ class StackShot:
     self.saved_rbp = None
     self.args = {}
     self.highest_arg_addr = None
-    self.locals = []
+    self.local_vars = []
 
     self.main_file = None
     self.src_files = []
@@ -251,22 +251,22 @@ class StackShot:
     return self.args.keys()
 
   def ingest_locals(self, data):
-    self.locals = []
+    self.local_vars = []
     if data.strip() == 'No locals.':
       return
     for line in data.split('\n'):
       name, val = line.split(' = ')
       local = self.Var(name)
       local.value = val
-      self.locals.append(local)
+      self.local_vars.append(local)
 
   def set_local_address(self, local_name, address):
-    for local in self.locals:
+    for local in self.local_vars:
       if local.name == local_name:
         local.address = address
 
   def local_names(self):
-    return [local.name for local in self.locals]
+    return [local.name for local in self.local_vars]
 
       
 
