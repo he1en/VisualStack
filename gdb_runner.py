@@ -11,6 +11,8 @@ class GDBRunner:
     self.c_filename = cfilename # uncompiled .c file
     with open(self.c_filename) as f:
       self.code_lines = f.readlines()
+    self.code_lines = [str(i+1) + '\t' + self.code_lines[i] for i in xrange(len(self.code_lines))]
+    self.save_code()
 
     self.stackshot = stackshot.StackShot()
     self.running = False
@@ -28,6 +30,9 @@ class GDBRunner:
     self.step_command = step_command
     self.collector.start()
     self.collect_output('initial start')
+
+  def save_code(self):
+    vsdb.writeCode(self.code_lines)
 
   def collect_output(self, command):
     output = ''
@@ -98,15 +103,16 @@ class GDBRunner:
 
   def run_to_completion(self):
     ''' To be called AFTER debug. '''
+    step = 0
     for output in self.step():
-      vsdb.runnerStep(output)
+      vsdb.runnerStep(step, output)
+      step += 1
     self.terminate()
 
   def terminate(self):
     self.proc.terminate()
     self.collector.terminate()
     self.output_file.close()
-    vsdb.setStep(0)
 
 def main():
   if len(sys.argv) != 2 or not sys.argv[1].endswith('.c'):

@@ -35,6 +35,7 @@ class StackShot:
   # invoke on a new stackshot instance
   def hydrate_from_db(self, stackframe, stackwords, changes):
     self.line = stackframe[0].LineContents
+    self.line_num = stackframe[0].LineNum
     self.regs['rsp'] = stackframe[0].RSP
     self.regs['rbp'] = stackframe[0].RBP
     self.regs['rax'] = stackframe[0].RAX
@@ -133,9 +134,14 @@ class StackShot:
         self.changed_regs.add(register)
         self.regs[register] = contents
 
-  def ingest_step(self, data):
-    self.line = data
-    self.line_num = data.split()[0]
+  def ingest_step(self, new_data):
+    last_line = new_data.split('\n')[-1]
+    self.line = last_line
+    line_num = last_line.split()[0]
+    try: 
+      self.line_num = int(line_num)
+    except ValueError:
+      self.line_num = None
 
   def ingest_stepi(self, data):
     line_info = data.split('\n')[0]

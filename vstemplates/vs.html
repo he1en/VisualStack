@@ -3,16 +3,27 @@
 {# include the first two lines above to extend the app_base template #}
 
 <form method="POST" action="visualstack" style="max-width:400px; width:100%">
-  <div class="form-group">
+  {#<div class="form-group">
     <input type="text" name="gdb_command" class="form-control" id="gdb_command" />
-  </div>
-  <input type="submit" value="Step" class="btn btn-primary" /></div>
+  </div>#}
+  <input type="submit" name="step_back" value="Step Back" class="btn btn-primary" /></div>
+  <input type="submit" name="step_forward"value="Step Forward" class="btn btn-primary" /></div>
 </form>
 
   <h3>Visual Stack</h3>
   {% if stack %}
   {# <div class="alert alert-info">Current line: {{ stack.line }}</div>
   <div class="alert alert-info">Registers: {{ stack.regs }}</div> #}
+
+  {% if localcode %}
+    {% for line in localcode %}
+    {% if stack.line_num == line.split()[0]|int %}
+    <b> {{ line }} </b><br>
+    {% else %}
+    <span> {{ line }} </span><br>
+    {% endif %}
+    {% endfor %}
+  {% endif %}
 
   <h4>Registers</h4>
   <table border="1" style="width:100%">
