@@ -21,7 +21,7 @@ class StackShot:
   def __init__(self):
     self.line = None  # String, last line number
     self.line_num = None
-
+    self.instruction = None
     self.regs = {r: 'N/A' for r in regs}
     self.ordered_regs = regs
     self.changed_regs = set()
@@ -42,9 +42,11 @@ class StackShot:
     self.new_frame_loaded = True
 
   # invoke on a new stackshot instance
-  def hydrate_from_db(self, stackframe, stackwords, changes):
+  def hydrate_from_db(self, stackframe, stackwords, changes, arguments):
     self.line = stackframe[0].LineContents
     self.line_num = stackframe[0].LineNum
+    self.instruction = stackframe[0].Instruction
+    self.highest_arg_addr = stackframe[0].HighestArgAddr
     self.regs['rsp'] = stackframe[0].RSP
     self.regs['rbp'] = stackframe[0].RBP
     self.regs['rax'] = stackframe[0].RAX
@@ -69,6 +71,8 @@ class StackShot:
         self.changed_regs.add(changes[i].ChangeAddr)
       elif changes[i].ChangeType == 'WORD':
         self.changed_words.add(changes[i].ChangeAddr)
+    for i in xrange(len(arguments)):
+      self.args[arguments[i].ArgName] = [arguments[i].ArgValue, arguments[i].ArgAddr]
 
   def stringify(self):
     # TODO: make this useful
@@ -185,6 +189,11 @@ class StackShot:
       _, line_num, line = line_info.split("\t")
       self.line = line.strip()
       self.line_num = line_num.strip()
+    try:
+      self.line_num = int(self.line_num)
+    except ValueError:
+      self.line_num = None
+
 
   def clear_changed_words(self):
     self.changed_words = set()

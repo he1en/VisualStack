@@ -72,6 +72,8 @@ class visual_stack:
       if contents is not None:
         curr_stack = contents
         local_code = vsdb.getLocalCode(contents.line_num)
+        print curr_stack.highest_arg_addr
+        print curr_stack.args
     except Exception as e:
       t.rollback()
       print str(e)

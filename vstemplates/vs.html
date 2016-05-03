@@ -18,7 +18,7 @@
   {% if localcode %}
     {% for line in localcode %}
     {% if stack.line_num == line.split()[0]|int %}
-    <b> {{ line }} </b><br>
+    <b> {{ line }} &nbsp;&nbsp;&nbsp;&nbsp; {{ stack.instruction }}</b><br>
     {% else %}
     <span> {{ line }} </span><br>
     {% endif %}
@@ -51,10 +51,14 @@
     </tr>
   {% for k in stack.ordered_addresses %}
     <tr>
-      <td>{{ k }}</td>
-      {% if k in stack.changed_words %}
+      {% if k|string >= stack.highest_arg_addr|string %} 
+      <td bgcolor=#d9d9d9>{{ k }}</td>
+      <td bgcolor=#d9d9d9>{{ stack.words[k] }}</td>
+      {% elif k in stack.changed_words %}
+      <td><b>{{ k }}</b></td>
       <td><b>{{ stack.words[k] }}</b></td>
       {% else %}
+      <td>{{ k }}</td>
       <td>{{ stack.words[k] }}</td>
       {% endif %}
     </tr>
