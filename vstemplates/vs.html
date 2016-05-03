@@ -47,8 +47,9 @@
   <h4>Stack</h4>
   <table border="1" style="width:100%">
     <tr>
-      <td width="50%">Address</td>
-      <td width="50%">Memory Contents</td>
+      <td width="33.3%">Address</td>
+      <td width="33.3%">Memory Contents</td>
+      <td width="33.3"><b>Arguments</b> and Local Variables</td>
     </tr>
   {% for k in stack.ordered_addresses %}
     <tr>
@@ -68,6 +69,16 @@
       <td>{{ k }}</td>
       <td>{{ stack.words[k] }}</td>
       {% endif %}
+      {% for argn in stack.args %}
+        {% if stack.args[argn][1]|string == k|string %}
+          <td><b>&#60;&#45;&#45; {{ argn }} &#61; {{ stack.args[argn][0]}}</b></td>
+        {% endif %}
+      {% endfor %}
+      {% for var in stack.local_vars %}
+        {% if var.address|string == k|string %}
+          <td>&#60;&#45;&#45; {{ var.name }} &#61; {{ var.value}}</td>
+        {% endif %}
+      {% endfor %}
     </tr>
   {% endfor %}
   </table>

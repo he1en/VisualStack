@@ -40,15 +40,17 @@ def getContentsForStep(step):
   query_string1 = 'select * from StackFrame where StepNum = $stepNum'
   query_string2 = 'select * from StackWords where StepNum = $stepNum'
   query_string3 = 'select * from Changes where StepNum = $stepNum'
-  query_string4 = 'select * from FnArguments where StepNum = $stepNum'
+  query_string4 = 'select * from LocalVars where StepNum = $stepNum'
+  query_string5 = 'select * from FnArguments where StepNum = $stepNum'
   result1 = query(query_string1, input_vars)
   if result1 is None or len(result1) == 0:
     return None
   result2 = query(query_string2, input_vars)
   result3 = query(query_string3, input_vars)
   result4 = query(query_string4, input_vars)
+  result5 = query(query_string5, input_vars)
   ss = stackshot.StackShot()
-  ss.hydrate_from_db(result1, result2, result3, result4)
+  ss.hydrate_from_db(result1, result2, result3, result4, result5)
   return ss
 
 # returns list starting 2 lines before and ending 2 lines after the line number passed in
@@ -107,6 +109,10 @@ def addStep(step_num, contents):
     query_string = 'insert into Changes values($stepNum, $changeType, $changeAddr)'
     input_vars = {'stepNum': step_num, 'changeType': 'WORD', 'changeAddr': change}
     db.query(query_string, input_vars)
+  for i, var in enumerate(contents.local_vars):
+    query_string = 'insert into LocalVars values($stepNum, $varName, $varValue, $varAddr)'
+    input_vars = {'stepNum': step_num, 'varName': var.name, 'varValue': var.value, 'varAddr': var.address}
+    db.query(query_string, input_vars) 
   for arg in contents.args:
     c = contents.args[arg]
     query_string = 'insert into FnArguments values($stepNum, $argName, $argValue, $argAddr)'

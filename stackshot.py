@@ -13,10 +13,10 @@ WORD = 8
 class StackShot:
 
   class Var:
-    def __init__(self, name):
+    def __init__(self, name, value=None, address=None):
       self.name = name
-      self.address = None
-      self.value = None
+      self.value = value
+      self.address = address
 
   def __init__(self):
     self.line = None  # String, last line number
@@ -43,7 +43,7 @@ class StackShot:
     self.new_frame_loaded = True
 
   # invoke on a new stackshot instance
-  def hydrate_from_db(self, stackframe, stackwords, changes, arguments):
+  def hydrate_from_db(self, stackframe, stackwords, changes, local_vars, arguments):
     self.line = stackframe[0].LineContents
     self.line_num = stackframe[0].LineNum
     self.instruction = stackframe[0].Instruction
@@ -72,6 +72,8 @@ class StackShot:
         self.changed_regs.add(changes[i].ChangeAddr)
       elif changes[i].ChangeType == 'WORD':
         self.changed_words.add(changes[i].ChangeAddr)
+    for i in xrange(len(local_vars)):
+      self.local_vars.append(self.Var(local_vars[i].VarName, local_vars[i].VarValue, local_vars[i].VarAddr))
     for i in xrange(len(arguments)):
       self.args[arguments[i].ArgName] = [arguments[i].ArgValue, arguments[i].ArgAddr]
 
