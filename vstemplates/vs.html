@@ -18,7 +18,7 @@
   {% if localcode %}
     {% for line in localcode %}
     {% if stack.line_num == line.split()[0]|int %}
-    <b> {{ line }} </b><br>
+    <b> {{ line }} &nbsp;&nbsp;&nbsp;&nbsp; {{ stack.instruction }}</b><br>
     {% else %}
     <span> {{ line }} </span><br>
     {% endif %}

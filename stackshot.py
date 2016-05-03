@@ -37,6 +37,7 @@ class StackShot:
   def hydrate_from_db(self, stackframe, stackwords, changes, arguments):
     self.line = stackframe[0].LineContents
     self.line_num = stackframe[0].LineNum
+    self.instruction = stackframe[0].Instruction
     self.highest_arg_addr = stackframe[0].HighestArgAddr
     self.regs['rsp'] = stackframe[0].RSP
     self.regs['rbp'] = stackframe[0].RBP

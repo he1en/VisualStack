@@ -83,7 +83,7 @@ def setStep(curr_step):
 # never invoked by clients of this module
 # adds input contents (StackShot) into the db for the input step_num
 def addStep(step_num, contents):
-  query_string = 'insert into StackFrame values($stepNum, $linenum, $line, $highestArgAddr'
+  query_string = 'insert into StackFrame values($stepNum, $linenum, $line, $instruction, $highestArgAddr'
   for r in stackshot.regs:
     query_string += ', $' + r
   query_string += ')'
@@ -92,6 +92,7 @@ def addStep(step_num, contents):
   input_vars['stepNum'] = step_num
   input_vars['linenum'] = contents.line_num
   input_vars['line'] = contents.line
+  input_vars['instruction'] = contents.instruction
   input_vars['highestArgAddr'] = contents.highest_arg_addr
   db.query(query_string, input_vars)
   for addr, w in contents.words.iteritems():
