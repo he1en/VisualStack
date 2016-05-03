@@ -54,6 +54,12 @@
       {% if k|string >= stack.highest_arg_addr|string %} 
       <td bgcolor=#d9d9d9>{{ k }}</td>
       <td bgcolor=#d9d9d9>{{ stack.words[k] }}</td>
+      {% elif k|string <= stack.regs['rsp']|string and k in stack.changed_words %}
+      <td bgcolor=#ff6666><b>{{ k }}</b></td>
+      <td bgcolor=#ff6666><b>{{ stack.words[k] }}</b></td>
+      {% elif k|string <= stack.regs['rsp']|string %}
+      <td bgcolor=#ff6666>{{ k }}</td>
+      <td bgcolor=#ff6666>{{ stack.words[k] }}</td>
       {% elif k in stack.changed_words %}
       <td><b>{{ k }}</b></td>
       <td><b>{{ stack.words[k] }}</b></td>
