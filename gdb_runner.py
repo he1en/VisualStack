@@ -7,7 +7,7 @@ import stackshot
 
 class GDBRunner:
 
-  def __init__(self, cfilename):
+  def __init__(self, cfilename, step_command='stepi'):
     self.c_filename = cfilename # uncompiled .c file
     with open(self.c_filename) as f:
       self.code_lines = f.readlines()
@@ -27,8 +27,9 @@ class GDBRunner:
     fd = self.proc.stdout.fileno()
     self.collector = multiprocessing.Process(target=self.read_gdb_output, \
                                              args=[fd])
+    self.step_command = step_command
     self.collector.start()
-    self.collect_output('step')
+    self.collect_output('initial start')
 
   def save_code(self):
     vsdb.writeCode(self.code_lines)
@@ -40,7 +41,7 @@ class GDBRunner:
       if "program is not being run" in output:
         self.running = False
 
-    if command == 'step' and "exit(0)" in output:
+    if command == self.step_command and "exit(0)" in output:
       self.running = False
     self.output_file.write(output)
     self.stackshot.ingest(output, command)
@@ -69,8 +70,8 @@ class GDBRunner:
     self.send('b main')
     self.send('run')
     self.skip_other_sources()
+    self.send('display/i $pc')
     self.capture_stack()
-
 
   def capture_stack(self):
     if not self.running:
@@ -83,8 +84,8 @@ class GDBRunner:
     for address in self.stackshot.frame_addresses():
       self.send('x/1xg %s' % address)
 
-    # new stack frame
-    if 'rbp' in self.stackshot.changed_regs:
+    # new stack frame 
+    if self.stackshot.new_frame_loaded:
       self.send('info args')
       for arg in self.stackshot.arg_names():
         self.send('p &%s' % arg)
@@ -96,7 +97,7 @@ class GDBRunner:
     yield self.stackshot
     latest_output = ""
     while self.running:
-      self.send('step')
+      self.send(self.step_command)
       self.capture_stack()
       yield self.stackshot
 
