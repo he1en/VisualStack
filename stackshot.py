@@ -28,6 +28,10 @@ class StackShot:
     self.main_file = None
     self.src_files = []
 
+    self.new_line = True
+    self.new_function = True
+    self.new_frame_loaded = True
+
   # invoke on a new stackshot instance
   def hydrate_from_db(self, stackframe, stackwords, changes):
     self.line = stackframe[0].LineContents
@@ -64,6 +68,7 @@ class StackShot:
     direct_commands = {
       'next': self.ingest_step,
       'step': self.ingest_step,
+      'stepi': self.ingest_stepi,
       'info registers': self.ingest_registers,
       'info sources': self.ingest_sources,
       'info source': self.ingest_main_file,
@@ -75,9 +80,11 @@ class StackShot:
       '^p &(.+)$': self.ingest_arg_address
     }
     no_action_commands = [
+      '^initial start$',
       '^b main$',
       '^run$',
-      '^skip .+$'
+      '^skip .+$',
+      '^display/i $pc$'
     ]
 
     data = data.replace('\n(gdb)', '')
@@ -126,10 +133,39 @@ class StackShot:
         self.changed_regs.add(register)
         self.regs[register] = contents
 
-  def ingest_step(self, new_data):
-    last_line = new_data.split('\n')[-1]
-    self.line = last_line
-    self.line_num = last_line.split()[0]
+  def ingest_step(self, data):
+    self.line = data
+    self.line_num = data.split()[0]
+
+  def ingest_stepi(self, data):
+    line_info = data.split('\n')[0]
+    assembly_info = data.split('\n')[-1]
+    self.instruction = assembly_info.split()[1]
+
+    if self.main_file in data:
+      ''' Stepped into new function '''
+      self.new_function = True
+      self.new_line = True
+      self.new_frame_loaded = False
+      self.line = line_info.split('at')[0].strip()
+      self.line_num = data.split(self.main_file + ':')[-1]
+
+    elif line_info[:2] != '0x':
+      ''' Stepped into new line '''
+      self.new_line = True
+      if self.new_function:
+        self.new_frame_loaded = True
+        self.new_function = False
+      line_num, line = line_info.split("\t")
+      self.line = line.strip()
+      self.line_num = line_num.strip()
+
+    else:
+      self.new_line = False
+      self.new_frame_loaded = False
+      instruction, line_num, line = line_info.split("\t")
+      self.line = line.strip()
+      self.line_num = line_num.strip()
 
   def clear_changed_words(self):
     self.changed_words = set()
