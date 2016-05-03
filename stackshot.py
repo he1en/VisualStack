@@ -146,7 +146,7 @@ class StackShot:
   def ingest_stepi(self, data):
     line_info = data.split('\n')[0]
     assembly_info = data.split('\n')[-1]
-    self.instruction = assembly_info.split()[1]
+    self.instruction = assembly_info.split(':')[-1]
 
     if self.main_file in data:
       ''' Stepped into new function '''
@@ -154,7 +154,9 @@ class StackShot:
       self.new_line = True
       self.new_frame_loaded = False
       self.line = line_info.split('at')[0].strip()
-      self.line_num = data.split(self.main_file + ':')[-1]
+
+      search_data =  data.replace('\n', ' ').split(self.main_file)[1]
+      self.line_num = re.match(':(\d+)', search_data).group(1)
 
     elif line_info[:2] != '0x':
       ''' Stepped into new line '''
@@ -169,7 +171,7 @@ class StackShot:
     else:
       self.new_line = False
       self.new_frame_loaded = False
-      instruction, line_num, line = line_info.split("\t")
+      _, line_num, line = line_info.split("\t")
       self.line = line.strip()
       self.line_num = line_num.strip()
 
