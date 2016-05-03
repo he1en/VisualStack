@@ -21,7 +21,7 @@ class StackShot:
   def __init__(self):
     self.line = None  # String, last line number
     self.line_num = None
-
+    self.instruction = None
     self.regs = {r: 'N/A' for r in regs}
     self.ordered_regs = regs
     self.changed_regs = set()
@@ -33,6 +33,7 @@ class StackShot:
     self.saved_rbp = None
     self.args = {}
     self.highest_arg_addr = None
+    self.locals = []
 
     self.main_file = None
     self.src_files = []
@@ -42,9 +43,11 @@ class StackShot:
     self.new_frame_loaded = True
 
   # invoke on a new stackshot instance
-  def hydrate_from_db(self, stackframe, stackwords, changes):
+  def hydrate_from_db(self, stackframe, stackwords, changes, arguments):
     self.line = stackframe[0].LineContents
     self.line_num = stackframe[0].LineNum
+    self.instruction = stackframe[0].Instruction
+    self.highest_arg_addr = stackframe[0].HighestArgAddr
     self.regs['rsp'] = stackframe[0].RSP
     self.regs['rbp'] = stackframe[0].RBP
     self.regs['rax'] = stackframe[0].RAX
@@ -69,6 +72,8 @@ class StackShot:
         self.changed_regs.add(changes[i].ChangeAddr)
       elif changes[i].ChangeType == 'WORD':
         self.changed_words.add(changes[i].ChangeAddr)
+    for i in xrange(len(arguments)):
+      self.args[arguments[i].ArgName] = [arguments[i].ArgValue, arguments[i].ArgAddr]
 
   def stringify(self):
     # TODO: make this useful
@@ -88,7 +93,7 @@ class StackShot:
     }
     match_commands = {
       '^x/1xg (0x[a-f\d]+)$': self.ingest_address_examine,
-      '^p &(.+)$': self.ingest_arg_address
+      '^p &(.+)$': self.ingest_var_address
     }
     no_action_commands = [
       '^initial start$',
@@ -185,6 +190,11 @@ class StackShot:
       _, line_num, line = line_info.split("\t")
       self.line = line.strip()
       self.line_num = line_num.strip()
+    try:
+      self.line_num = int(self.line_num)
+    except ValueError:
+      self.line_num = None
+
 
   def clear_changed_words(self):
     self.changed_words = set()
@@ -212,9 +222,18 @@ class StackShot:
     # Collect memory below base pointer until bottom of red zone
     num_below = (rbp_int - redzone_int) / WORD
     for i in range(1, num_below):
-      addresses.append(hex(rbp_int - i * WORD) )
+      addresses.append(hex(rbp_int - i * WORD))
 
     return addresses
+
+  def ingest_var_address(self, var_name, data):
+    address = data.split()[-1].strip()
+
+    if var_name in self.arg_names():
+      self.set_arg_address(var_name, address)
+
+    if var_name in self.local_names():
+      self.set_local_address(var_name, address)
 
   def ingest_args(self, data):
     self.highest_arg_addr = None
@@ -223,9 +242,7 @@ class StackShot:
       name, val = line.split(' = ')
       self.args[name] = [val.strip()]
 
-  def ingest_arg_address(self, arg_name, data):
-    address = data.split()[-1].strip()
-    self.args[arg_name].append(address)
+  def set_arg_address(self, arg_name, address):
     if self.highest_arg_addr == None or \
        int(address, 16) > int(self.highest_arg_addr, 16):
       self.highest_arg_addr = address
@@ -234,6 +251,22 @@ class StackShot:
     return self.args.keys()
 
   def ingest_locals(self, data):
-    pass
+    self.locals = []
+    if data.strip() == 'No locals.':
+      return
+    for line in data.split('\n'):
+      name, val = line.split(' = ')
+      local = self.Var(name)
+      local.value = val
+      self.locals.append(local)
 
-    
+  def set_local_address(self, local_name, address):
+    for local in self.locals:
+      if local.name == local_name:
+        local.address = address
+
+  def local_names(self):
+    return [local.name for local in self.locals]
+
+      
+
