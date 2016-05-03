@@ -243,6 +243,7 @@ class StackShot:
       self.args[name] = [val.strip()]
 
   def set_arg_address(self, arg_name, address):
+    self.args[arg_name].append(address)
     if self.highest_arg_addr == None or \
        int(address, 16) > int(self.highest_arg_addr, 16):
       self.highest_arg_addr = address
