@@ -40,13 +40,15 @@ def getContentsForStep(step):
   query_string1 = 'select * from StackFrame where StepNum = $stepNum'
   query_string2 = 'select * from StackWords where StepNum = $stepNum'
   query_string3 = 'select * from Changes where StepNum = $stepNum'
+  query_string4 = 'select * from FnArguments where StepNum = $stepNum'
   result1 = query(query_string1, input_vars)
   if result1 is None or len(result1) == 0:
     return None
   result2 = query(query_string2, input_vars)
   result3 = query(query_string3, input_vars)
+  result4 = query(query_string4, input_vars)
   ss = stackshot.StackShot()
-  ss.hydrate_from_db(result1, result2, result3)
+  ss.hydrate_from_db(result1, result2, result3, result4)
   return ss
 
 # returns list starting 2 lines before and ending 2 lines after the line number passed in
@@ -81,7 +83,7 @@ def setStep(curr_step):
 # never invoked by clients of this module
 # adds input contents (StackShot) into the db for the input step_num
 def addStep(step_num, contents):
-  query_string = 'insert into StackFrame values($stepNum, $linenum, $line'
+  query_string = 'insert into StackFrame values($stepNum, $linenum, $line, $highestArgAddr'
   for r in stackshot.regs:
     query_string += ', $' + r
   query_string += ')'
@@ -90,6 +92,7 @@ def addStep(step_num, contents):
   input_vars['stepNum'] = step_num
   input_vars['linenum'] = contents.line_num
   input_vars['line'] = contents.line
+  input_vars['highestArgAddr'] = contents.highest_arg_addr
   db.query(query_string, input_vars)
   for addr, w in contents.words.iteritems():
     query_string = 'insert into StackWords values($stepNum, $addr, $mem)'
@@ -102,6 +105,11 @@ def addStep(step_num, contents):
   for change in contents.changed_words:
     query_string = 'insert into Changes values($stepNum, $changeType, $changeAddr)'
     input_vars = {'stepNum': step_num, 'changeType': 'WORD', 'changeAddr': change}
+    db.query(query_string, input_vars)
+  for arg in contents.args:
+    c = contents.args[arg]
+    query_string = 'insert into FnArguments values($stepNum, $argName, $argValue, $argAddr)'
+    input_vars = {'stepNum': step_num, 'argName': arg, 'argValue': c[0], 'argAddr': c[1]}
     db.query(query_string, input_vars)
 
 def runnerStep(step, contents):
