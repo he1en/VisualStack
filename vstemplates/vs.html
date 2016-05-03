@@ -3,10 +3,11 @@
 {# include the first two lines above to extend the app_base template #}
 
 <form method="POST" action="visualstack" style="max-width:400px; width:100%">
-  {#<div class="form-group">
-    <input type="text" name="gdb_command" class="form-control" id="gdb_command" />
+  <div class="form-group">
+  {#  <input type="text" name="gdb_command" class="form-control" id="gdb_command" />
   </div>#}
-  <input type="submit" name="step_back" value="Step Back" class="btn btn-primary" /></div>
+  <input type="submit" name="start_over" value="Start Over" class="btn btn-primary" />
+  <input type="submit" name="step_back" value="Step Back" class="btn btn-primary" />
   <input type="submit" name="step_forward"value="Step Forward" class="btn btn-primary" /></div>
 </form>
 
@@ -54,6 +55,12 @@
       {% if k|string >= stack.highest_arg_addr|string %} 
       <td bgcolor=#d9d9d9>{{ k }}</td>
       <td bgcolor=#d9d9d9>{{ stack.words[k] }}</td>
+      {% elif k|string <= stack.regs['rsp']|string and k in stack.changed_words %}
+      <td bgcolor=#ff6666><b>{{ k }}</b></td>
+      <td bgcolor=#ff6666><b>{{ stack.words[k] }}</b></td>
+      {% elif k|string <= stack.regs['rsp']|string %}
+      <td bgcolor=#ff6666>{{ k }}</td>
+      <td bgcolor=#ff6666>{{ stack.words[k] }}</td>
       {% elif k in stack.changed_words %}
       <td><b>{{ k }}</b></td>
       <td><b>{{ stack.words[k] }}</b></td>

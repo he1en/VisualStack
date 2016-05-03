@@ -59,16 +59,19 @@ class visual_stack:
       step_direction = 1
     elif 'step_back' in post_params:
       step_direction = -1
-    print step_direction
 
     # for vsdb, get current step, increment stepper in correct direction, get output
     curr_stack = None
     local_code = None
     t = vsdb.transaction()
     try:
-      currStep = vsdb.getCurrStep()
-      contents = vsdb.getContentsForStep(currStep + step_direction)
-      vsdb.setStep(currStep + step_direction)
+      if step_direction is None:
+        vsdb.setStep(0)
+        contents = vsdb.getContentsForStep(0)
+      else:
+        currStep = vsdb.getCurrStep()
+        contents = vsdb.getContentsForStep(currStep + step_direction)
+        vsdb.setStep(currStep + step_direction)
       if contents is not None:
         curr_stack = contents
         local_code = vsdb.getLocalCode(contents.line_num)
