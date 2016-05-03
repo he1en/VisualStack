@@ -36,12 +36,12 @@ class GDBRunner:
 
   def collect_output(self, command):
     output = ''
-    while "(gdb)" not in output:
+    while '(gdb)' not in output:
       output += self.output_queue.get()
-      if "program is not being run" in output:
+      if 'program is not being run' in output:
         self.running = False
 
-    if command == self.step_command and "exit(0)" in output:
+    if command == self.step_command and 'exit(0)' in output:
       self.running = False
     self.output_file.write(output)
     self.stackshot.ingest(output, command)
@@ -100,7 +100,7 @@ class GDBRunner:
         describing the new stack. '''
     # hacky? 'run' yields first real stack
     yield self.stackshot
-    latest_output = ""
+    latest_output = ''
     while self.running:
       self.send(self.step_command)
       self.capture_stack()
@@ -121,7 +121,7 @@ class GDBRunner:
 
 def main():
   if len(sys.argv) != 2 or not sys.argv[1].endswith('.c'):
-    print "Usage: python gdb_runner.py <uncompiled c file>"
+    print 'Usage: python gdb_runner.py <uncompiled c file>'
     exit(0)
 
   runner = GDBRunner(sys.argv[1])
@@ -129,5 +129,5 @@ def main():
   runner.run_to_completion()
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

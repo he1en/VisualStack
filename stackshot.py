@@ -120,11 +120,11 @@ class StackShot:
       if re.match(no_action_command, command):
         return
 
-    print "Cannot ingest data from gdb command %s." % command
+    print 'Cannot ingest data from gdb command %s.' % command
       
   def ingest_sources(self, data):
     for src_file in data.split(', '):
-      if "Source files for which" in src_file:
+      if 'Source files for which' in src_file:
         continue
       if src_file[-2:] == '.c':
         self.src_files.append(src_file.strip())
@@ -133,17 +133,17 @@ class StackShot:
     self.main_file = re.match('Current source file is (.+)\n', data).group(1)
 
   def ingest_saved_rbp(self, data):
-    self.saved_rbp = data.split(":")[-1].strip()
+    self.saved_rbp = data.split(':')[-1].strip()
 
   def ingest_address_examine(self, address, data):
-    contents = data.split(":")[-1].strip()
+    contents = data.split(':')[-1].strip()
     if address not in self.words or self.words[address] != contents:
       self.words[address] = contents
       self.changed_words.add(address)
 
   def ingest_registers(self, data):
     self.changed_regs = set()
-    for register_output in data.split("\n")[:16]: # only want first 16
+    for register_output in data.split('\n')[:16]: # only want first 16
       register, contents = register_output.split()[:2]
       if self.regs[register] != contents:
         self.changed_regs.add(register)
@@ -179,7 +179,7 @@ class StackShot:
       if self.new_function:
         self.new_frame_loaded = True
         self.new_function = False
-      line_num, line = line_info.split("\t")
+      line_num, line = line_info.split('\t')
       self.line = line.strip()
       self.line_num = line_num.strip()
 
@@ -187,7 +187,7 @@ class StackShot:
       ''' Stepped into new assembly instruction in same line '''
       self.new_line = False
       self.new_frame_loaded = False
-      _, line_num, line = line_info.split("\t")
+      _, line_num, line = line_info.split('\t')
       self.line = line.strip()
       self.line_num = line_num.strip()
     try:
