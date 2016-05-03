@@ -13,6 +13,7 @@ class StackShot:
   def __init__(self):
     self.line = None  # String, last line number
     self.line_num = None
+    self.instruction = None
     self.regs = {r: 'N/A' for r in regs}
     self.words = {}
     self.ordered_addresses = []
@@ -177,6 +178,11 @@ class StackShot:
       _, line_num, line = line_info.split("\t")
       self.line = line.strip()
       self.line_num = line_num.strip()
+    try:
+      self.line_num = int(self.line_num)
+    except ValueError:
+      self.line_num = None
+
 
   def clear_changed_words(self):
     self.changed_words = set()
