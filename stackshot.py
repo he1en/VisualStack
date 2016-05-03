@@ -7,18 +7,27 @@ import re
 regs = ['rsp', 'rbp', 'rax', 'rbx', 'rcx', 'rdx', 'rsi', 'rdi',
         'r8', 'r9', 'r10', 'r11', 'r12', 'r13', 'r14', 'r15']
 
+REDZONE_SIZE = 16
+WORD = 8
 
 class StackShot:
+
+  class Var:
+    def __init__(self, name):
+      self.name = name
+      self.address = None
+      self.value = None
 
   def __init__(self):
     self.line = None  # String, last line number
     self.line_num = None
+
     self.regs = {r: 'N/A' for r in regs}
+    self.ordered_regs = regs
+    self.changed_regs = set()
+
     self.words = {}
     self.ordered_addresses = []
-    self.ordered_regs = regs
-
-    self.changed_regs = set()
     self.changed_words = set()
 
     self.saved_rbp = None
@@ -74,7 +83,8 @@ class StackShot:
       'info sources': self.ingest_sources,
       'info source': self.ingest_main_file,
       'x/1xg $rbp': self.ingest_saved_rbp,
-      'info args': self.ingest_args
+      'info args': self.ingest_args,
+      'info locals': self.ingest_locals
     }
     match_commands = {
       '^x/1xg (0x[a-f\d]+)$': self.ingest_address_examine,
@@ -169,6 +179,7 @@ class StackShot:
       self.line_num = line_num.strip()
 
     else:
+      ''' Stepped into new assembly instruction in same line '''
       self.new_line = False
       self.new_frame_loaded = False
       _, line_num, line = line_info.split("\t")
@@ -183,6 +194,7 @@ class StackShot:
     addresses = []
     rbp_int = int(self.regs['rbp'], 16)
     rsp_int = int(self.regs['rsp'], 16)
+    redzone_int = rsp_int - REDZONE_SIZE * WORD
     saved_rbp_int = int(self.saved_rbp, 16)
 
     # Collect memory above base pointer until saved base pointer
@@ -190,17 +202,17 @@ class StackShot:
       # If saved_rbp is 0x0, we are in main.
       num_above = 0
     else:
-      num_above = (saved_rbp_int - rbp_int) / 8
+      num_above = (saved_rbp_int - rbp_int) / WORD
 
     for i in range(num_above):
-      addresses.append(hex(saved_rbp_int - i * 8))
+      addresses.append(hex(saved_rbp_int - i * WORD))
       
     addresses.append(self.regs['rbp'])
 
-    # Collect memory below base pointer until stack pointer
-    num_below = (rbp_int - rsp_int) / 8
+    # Collect memory below base pointer until bottom of red zone
+    num_below = (rbp_int - redzone_int) / WORD
     for i in range(1, num_below):
-      addresses.append(hex(rbp_int - i * 8) )
+      addresses.append(hex(rbp_int - i * WORD) )
 
     return addresses
 
@@ -220,5 +232,8 @@ class StackShot:
 
   def arg_names(self):
     return self.args.keys()
+
+  def ingest_locals(self, data):
+    pass
 
     
