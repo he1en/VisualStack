@@ -100,7 +100,7 @@ class StackShot:
       '^b main$',
       '^run$',
       '^skip .+$',
-      '^display/i $pc$'
+      '^display/i \$pc$'
     ]
 
     data = data.replace('\n(gdb)', '')
