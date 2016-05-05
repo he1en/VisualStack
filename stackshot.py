@@ -42,6 +42,9 @@ class StackShot:
     self.new_function = True
     self.new_frame_loaded = True
 
+    self.instruction_lines = []
+    self.curr_instruction_index = 0
+
   # invoke on a new stackshot instance
   def hydrate_from_db(self, stackframe, stackwords, changes, local_vars, arguments):
     self.line = stackframe[0].LineContents
@@ -83,15 +86,18 @@ class StackShot:
 
   def ingest(self, data, command):
     direct_commands = {
-      'next': self.ingest_step,
-      'step': self.ingest_step,
-      'stepi': self.ingest_stepi,
-      'info registers': self.ingest_registers,
-      'info sources': self.ingest_sources,
-      'info source': self.ingest_main_file,
-      'x/1xg $rbp': self.ingest_saved_rbp,
-      'info args': self.ingest_args,
-      'info locals': self.ingest_locals
+      '^run$': self.ingest_run,
+      '^next$': self.ingest_step,
+      '^step$': self.ingest_step,
+      '^stepi$': self.ingest_stepi,
+      '^info registers$': self.ingest_registers,
+      '^info sources$': self.ingest_sources,
+      '^info source$': self.ingest_main_file,
+      '^x/1xg \$rbp$': self.ingest_saved_rbp,
+      '^info args$': self.ingest_args,
+      '^info locals$': self.ingest_locals,
+      '^info line \d+$': self.ingest_line_info,
+      'disas .+, .+$': self.ingest_disas
     }
     match_commands = {
       '^x/1xg (0x[a-f\d]+)$': self.ingest_address_examine,
@@ -100,7 +106,6 @@ class StackShot:
     no_action_commands = [
       '^initial start$',
       '^b main$',
-      '^run$',
       '^skip .+$',
       '^display/i \$pc$'
     ]
@@ -108,8 +113,8 @@ class StackShot:
     data = data.replace('\n(gdb)', '')
 
     for direct_command in direct_commands.keys():
-      if direct_command == command:
-        direct_commands[command](data)
+      if re.match(direct_command, command):
+        direct_commands[direct_command](data)
         return
 
     for match_command in match_commands.keys():
@@ -160,6 +165,15 @@ class StackShot:
     except ValueError:
       self.line_num = None
 
+  def ingest_run(self, data):
+    self.new_function = True
+    self.new_line = True
+    self.new_frame_loaded = False
+    line_info = data.split('\n')[-1]
+    line_num, line = line_info.split('\t')
+    self.line = line.strip()
+    self.line_num = line_num.strip()
+
   def ingest_stepi(self, data):
     line_info = data.split('\n')[0]
     assembly_info = data.split('\n')[-1]
@@ -172,8 +186,8 @@ class StackShot:
       self.new_frame_loaded = False
       self.line = line_info.split('at')[0].strip()
 
-      search_data =  data.replace('\n', ' ').split(self.main_file)[1]
-      self.line_num = re.match(':(\d+)', search_data).group(1)
+      search_data = data.replace('\n', ' ').split(self.main_file)[1]
+      self.line_num = re.search(':(\d+)', search_data).group(1)
 
     elif line_info[:2] != '0x':
       ''' Stepped into new line '''
@@ -187,6 +201,7 @@ class StackShot:
 
     else:
       ''' Stepped into new assembly instruction in same line '''
+      self.curr_instruction_index += 1
       self.new_line = False
       self.new_frame_loaded = False
       _, line_num, line = line_info.split('\t')
@@ -197,6 +212,15 @@ class StackShot:
     except ValueError:
       self.line_num = None
 
+  def ingest_line_info(self, data):
+    self.line_instruction_limits = re.findall('(0x[a-f\d]+)', data)
+
+  def ingest_disas(self, data):
+    self.instruction_lines = []
+    self.curr_instruction_index = 0
+    for i, instruction_info in enumerate(data.split('\n')[1:-1]):
+      instruction = instruction_info.split(':')[-1].strip()
+      self.instruction_lines.append(instruction)
 
   def clear_changed_words(self):
     self.changed_words = set()
