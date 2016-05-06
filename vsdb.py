@@ -38,10 +38,12 @@ def getCurrStep():
 def getContentsForStep(step):
   input_vars = {'stepNum': step}
   query_string1 = 'select * from StackFrame where StepNum = $stepNum'
-  query_string2 = 'select * from StackWords where StepNum = $stepNum'
+  #query_string2 = 'select * from StackWords where StepNum = $stepNum'
+  query_string2 = 'select * from StackWordsDelta where StepNum <= $stepNum group by MemAddr'
   query_string3 = 'select * from Changes where StepNum = $stepNum'
   query_string4 = 'select * from LocalVars where StepNum = $stepNum'
   query_string5 = 'select * from FnArguments where StepNum = $stepNum'
+
   result1 = query(query_string1, input_vars)
   if result1 is None or len(result1) == 0:
     return None
@@ -49,6 +51,7 @@ def getContentsForStep(step):
   result3 = query(query_string3, input_vars)
   result4 = query(query_string4, input_vars)
   result5 = query(query_string5, input_vars)
+
   ss = stackshot.StackShot()
   ss.hydrate_from_db(result1, result2, result3, result4, result5)
   return ss
@@ -97,18 +100,25 @@ def addStep(step_num, contents):
   input_vars['instruction'] = contents.instruction
   input_vars['highestArgAddr'] = contents.highest_arg_addr
   db.query(query_string, input_vars)
+
+
   for addr, w in contents.words.iteritems():
-    query_string = 'insert into StackWords values($stepNum, $addr, $mem)'
-    input_vars = {'stepNum': step_num, 'addr': addr, 'mem': w}
-    db.query(query_string, input_vars)
+    if addr in contents.changed_words:
+      query_string = 'insert into StackWordsDelta values($stepNum, $addr, $mem)'
+      input_vars = {'stepNum': step_num, 'addr': addr, 'mem': w}
+      db.query(query_string, input_vars)
+  #for addr, w in contents.words.iteritems():
+  #  query_string = 'insert into StackWords values($stepNum, $addr, $mem)'
+  #  input_vars = {'stepNum': step_num, 'addr': addr, 'mem': w}
+  #  db.query(query_string, input_vars)
   for change in contents.changed_regs:
     query_string = 'insert into Changes values($stepNum, $changeType, $changeAddr)'
     input_vars = {'stepNum': step_num, 'changeType': 'REGISTER', 'changeAddr': change}
     db.query(query_string, input_vars)
-  for change in contents.changed_words:
-    query_string = 'insert into Changes values($stepNum, $changeType, $changeAddr)'
-    input_vars = {'stepNum': step_num, 'changeType': 'WORD', 'changeAddr': change}
-    db.query(query_string, input_vars)
+  #for change in contents.changed_words:
+  #  query_string = 'insert into Changes values($stepNum, $changeType, $changeAddr)'
+  #  input_vars = {'stepNum': step_num, 'changeType': 'WORD', 'changeAddr': change}
+  #  db.query(query_string, input_vars)
   for i, var in enumerate(contents.local_vars):
     query_string = 'insert into LocalVars values($stepNum, $varName, $varValue, $varAddr)'
     input_vars = {'stepNum': step_num, 'varName': var.name, 'varValue': var.value, 'varAddr': var.address}

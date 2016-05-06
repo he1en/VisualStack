@@ -64,14 +64,18 @@ class StackShot:
     self.regs['r13'] = stackframe[0].R13
     self.regs['r14'] = stackframe[0].R14
     self.regs['r15'] = stackframe[0].R15
+
     for i in xrange(len(stackwords)):
       self.words[stackwords[i].MemAddr] = stackwords[i].MemContents
+
+      if stackwords[i].StepNum == stackframe[0].StepNum:
+        self.changed_words.add(stackwords[i].MemAddr)
     self.ordered_addresses = sorted(self.words.keys(), key = lambda addr: int(addr, 16), reverse=True)
     for i in xrange(len(changes)):
       if changes[i].ChangeType == 'REGISTER':
         self.changed_regs.add(changes[i].ChangeAddr)
-      elif changes[i].ChangeType == 'WORD':
-        self.changed_words.add(changes[i].ChangeAddr)
+      #elif changes[i].ChangeType == 'WORD':
+      #  self.changed_words.add(changes[i].ChangeAddr)
     for i in xrange(len(local_vars)):
       self.local_vars.append(self.Var(local_vars[i].VarName, local_vars[i].VarValue, local_vars[i].VarAddr))
     for i in xrange(len(arguments)):
