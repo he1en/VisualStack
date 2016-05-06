@@ -1,24 +1,19 @@
 DROP TABLE if exists Code;
 DROP TABLE if exists StackFrame;
 DROP TABLE if exists StackWordsDelta;
---DROP TABLE if exists StackWords;
--- now Changes will only have Register changes
---TODO: make CHanges actually hold register deltas, and remove registers from StackFrame
-DROP TABLE if exists Changes;
+DROP TABLE if exists RegistersDelta;
 DROP TABLE if exists LocalVars;
 DROP TABLE if exists FnArguments;
 DROP TABLE if exists CurrStep;
 
 
 CREATE TABLE Code(LineNum INT PRIMARY KEY, LineContents TEXT);
-CREATE TABLE StackFrame(StepNum INT PRIMARY KEY, LineNum REFERENCES Code(LineNum), LineContents TEXT, Instruction TEXT, HighestArgAddr TEXT, RSP TEXT, RBP TEXT, RAX TEXT, RBX TEXT, RCX TEXT, RDX TEXT, RSI TEXT, RDI TEXT, R8 TEXT, R9 TEXT, R10 TEXT, R11 TEXT, R12 TEXT, R13 TEXT, R14 TEXT, R15 TEXT);
+CREATE TABLE StackFrame(StepNum INT PRIMARY KEY, LineNum REFERENCES Code(LineNum), LineContents TEXT, Instruction TEXT, HighestArgAddr TEXT);
 CREATE TABLE StackWordsDelta(StepNum REFERENCES StackFrame(StepNum), MemAddr TEXT, MemContents TEXT);
---CREATE TABLE StackWords(StepNum REFERENCES StackFrame(StepNum), MemAddr TEXT, MemContents TEXT);
-CREATE TABLE Changes(StepNum REFERENCES StackFrame(StepNum), ChangeType TEXT, ChangeAddr TEXT);
+CREATE TABLE RegistersDelta(StepNum REFERENCES StackFrame(StepNum), RegName TEXT, RegContents TEXT);
 CREATE TABLE LocalVars(StepNum REFERENCES StackFrame(StepNum), VarName TEXT, VarValue TEXT, VarAddr TEXT);
 CREATE TABLE FnArguments(StepNum REFERENCES StackFrame(StepNum), ArgName TEXT, ArgValue TEXT, ArgAddr TEXT);
 CREATE TABLE CurrStep(StepNum REFERENCES StackFrame(StepNum));
-
 
 INSERT into CurrStep values (0);
 SELECT StepNum FROM CurrStep;

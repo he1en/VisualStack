@@ -38,11 +38,11 @@ def getCurrStep():
 def getContentsForStep(step):
   input_vars = {'stepNum': step}
   query_string1 = 'select * from StackFrame where StepNum = $stepNum'
-  #query_string2 = 'select * from StackWords where StepNum = $stepNum'
   query_string2 = 'select * from StackWordsDelta where StepNum <= $stepNum group by MemAddr'
-  query_string3 = 'select * from Changes where StepNum = $stepNum'
+  query_string3 = 'select * from RegistersDelta where StepNum <= $stepNum group by RegName'
   query_string4 = 'select * from LocalVars where StepNum = $stepNum'
   query_string5 = 'select * from FnArguments where StepNum = $stepNum'
+
 
   result1 = query(query_string1, input_vars)
   if result1 is None or len(result1) == 0:
@@ -72,12 +72,11 @@ def writeCode(code_lines):
   input_vars = {}
   for i in xrange(len(code_lines)):
     query_list.append('($linenum' + str(i+1) + ',$line' + str(i+1) + ')')
-    # query_list.append('(' + str(i+1) + ',' + code_lines[i] + ')')
     query_list.append(',')
     input_vars['linenum'+str(i+1)] = i
     input_vars['line'+str(i+1)] = code_lines[i]
   query_list[-1] = ';'
-  print ''.join(query_list)
+  #print ''.join(query_list)
   return querySuccess(''.join(query_list), input_vars)
 
 # sets the curr step in db to be the input
@@ -88,12 +87,8 @@ def setStep(curr_step):
 # never invoked by clients of this module
 # adds input contents (StackShot) into the db for the input step_num
 def addStep(step_num, contents):
-  query_string = 'insert into StackFrame values($stepNum, $linenum, $line, $instruction, $highestArgAddr'
-  for r in stackshot.regs:
-    query_string += ', $' + r
-  query_string += ')'
-  r = contents.regs
-  input_vars = {reg: r[reg] for reg in stackshot.regs}
+  query_string = 'insert into StackFrame values($stepNum, $linenum, $line, $instruction, $highestArgAddr)'
+  input_vars = {}
   input_vars['stepNum'] = step_num
   input_vars['linenum'] = contents.line_num
   input_vars['line'] = contents.line
@@ -101,24 +96,17 @@ def addStep(step_num, contents):
   input_vars['highestArgAddr'] = contents.highest_arg_addr
   db.query(query_string, input_vars)
 
+  for rname, rcontents in contents.regs.iteritems():
+    if rname in contents.changed_regs:
+      query_string = 'insert into RegistersDelta values($stepNum, $regname, $mem)'
+      input_vars = {'stepNum': step_num, 'regname': rname, 'mem': rcontents}
+      db.query(query_string, input_vars)
 
   for addr, w in contents.words.iteritems():
     if addr in contents.changed_words:
       query_string = 'insert into StackWordsDelta values($stepNum, $addr, $mem)'
       input_vars = {'stepNum': step_num, 'addr': addr, 'mem': w}
       db.query(query_string, input_vars)
-  #for addr, w in contents.words.iteritems():
-  #  query_string = 'insert into StackWords values($stepNum, $addr, $mem)'
-  #  input_vars = {'stepNum': step_num, 'addr': addr, 'mem': w}
-  #  db.query(query_string, input_vars)
-  for change in contents.changed_regs:
-    query_string = 'insert into Changes values($stepNum, $changeType, $changeAddr)'
-    input_vars = {'stepNum': step_num, 'changeType': 'REGISTER', 'changeAddr': change}
-    db.query(query_string, input_vars)
-  #for change in contents.changed_words:
-  #  query_string = 'insert into Changes values($stepNum, $changeType, $changeAddr)'
-  #  input_vars = {'stepNum': step_num, 'changeType': 'WORD', 'changeAddr': change}
-  #  db.query(query_string, input_vars)
   for i, var in enumerate(contents.local_vars):
     query_string = 'insert into LocalVars values($stepNum, $varName, $varValue, $varAddr)'
     input_vars = {'stepNum': step_num, 'varName': var.name, 'varValue': var.value, 'varAddr': var.address}

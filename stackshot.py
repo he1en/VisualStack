@@ -43,39 +43,21 @@ class StackShot:
     self.new_frame_loaded = True
 
   # invoke on a new stackshot instance
-  def hydrate_from_db(self, stackframe, stackwords, changes, local_vars, arguments):
+  def hydrate_from_db(self, stackframe, stackwords, registers, local_vars, arguments):
     self.line = stackframe[0].LineContents
     self.line_num = stackframe[0].LineNum
     self.instruction = stackframe[0].Instruction
     self.highest_arg_addr = stackframe[0].HighestArgAddr
-    self.regs['rsp'] = stackframe[0].RSP
-    self.regs['rbp'] = stackframe[0].RBP
-    self.regs['rax'] = stackframe[0].RAX
-    self.regs['rbx'] = stackframe[0].RBX
-    self.regs['rcx'] = stackframe[0].RCX
-    self.regs['rdx'] = stackframe[0].RDX
-    self.regs['rsi'] = stackframe[0].RSI
-    self.regs['rdi'] = stackframe[0].RDI
-    self.regs['r8'] = stackframe[0].R8
-    self.regs['r9'] = stackframe[0].R9
-    self.regs['r10'] = stackframe[0].R10
-    self.regs['r11'] = stackframe[0].R11
-    self.regs['r12'] = stackframe[0].R12
-    self.regs['r13'] = stackframe[0].R13
-    self.regs['r14'] = stackframe[0].R14
-    self.regs['r15'] = stackframe[0].R15
 
+    for i in xrange(len(registers)):
+      self.regs[registers[i].RegName] = registers[i].RegContents
+      if registers[i].StepNum == stackframe[0].StepNum:
+        self.changed_regs.add(registers[i].RegName)
     for i in xrange(len(stackwords)):
       self.words[stackwords[i].MemAddr] = stackwords[i].MemContents
-
       if stackwords[i].StepNum == stackframe[0].StepNum:
         self.changed_words.add(stackwords[i].MemAddr)
     self.ordered_addresses = sorted(self.words.keys(), key = lambda addr: int(addr, 16), reverse=True)
-    for i in xrange(len(changes)):
-      if changes[i].ChangeType == 'REGISTER':
-        self.changed_regs.add(changes[i].ChangeAddr)
-      #elif changes[i].ChangeType == 'WORD':
-      #  self.changed_words.add(changes[i].ChangeAddr)
     for i in xrange(len(local_vars)):
       self.local_vars.append(self.Var(local_vars[i].VarName, local_vars[i].VarValue, local_vars[i].VarAddr))
     for i in xrange(len(arguments)):
