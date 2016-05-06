@@ -1,13 +1,13 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-long utilfunc(long a, long b, long c) {
-  long j = a + 2;
-  long k = b + 3;
-  long l = c + 4;
-  long sum = j + k + l;
+long utilfunc(long j, long k, long l) {
+  long m = j + 2;
+  long n = k + 3;
+  long o = l + 4;
+  long sum = m + n + o;
 
-  return j * k * l + sum;
+  return m * n * o + sum;
 }
 
 long myfunc(long a, long b, long c, long d, long e, long f, long g,
