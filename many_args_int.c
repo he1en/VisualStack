@@ -2,23 +2,23 @@
 #include <stdio.h>
 
 long utilfunc(long a, long b, long c) {
-  long xx = a + 2;
-  long yy = b + 3;
-  long zz = c + 4;
-  long sum = xx + yy + zz;
+  long j = a + 2;
+  long k = b + 3;
+  long l = c + 4;
+  long sum = j + k + l;
 
-  return xx * yy * zz + sum;
+  return j * k * l + sum;
 }
 
 long myfunc(long a, long b, long c, long d, long e, long f, long g,
             long h) {
-  long xx = a * b * c * d * e * f * g * h;
-  long yy = a + b + c + d + e + f + g + h;
-  long zz = utilfunc(xx, yy, xx % yy);
-  return zz + 20;
+  long x = a * b * c * d * e * f * g * h;
+  long y = a + b + c + d + e + f + g + h;
+  long z = utilfunc(x, y, x % y);
+  return z + 20;
 }
 
 int main (int argc, char *argv[]) {
   myfunc(1, 2, 3, 4, 5, 6, 7, 8);
-   exit(0);
+  exit(0);
 }
