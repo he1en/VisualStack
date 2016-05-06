@@ -90,6 +90,11 @@ class GDBRunner:
       for arg in self.stackshot.arg_names():
         self.send('p &%s' % arg)
 
+    # new line of code
+    if self.stackshot.new_line:
+      self.send('info line %s' % str(self.stackshot.line_num))
+      self.send('disas %s, %s' % tuple(self.stackshot.line_instruction_limits))
+
     self.send('info locals')
     for local in self.stackshot.local_names():
       self.send('p &%s' % local)
