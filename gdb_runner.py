@@ -84,8 +84,8 @@ class GDBRunner:
     for address in self.stackshot.frame_addresses():
       self.send('x/1xg %s' % address)
 
-    # new stack frame 
-    if self.stackshot.new_frame_loaded:
+    # new function or first line of new function
+    if self.stackshot.new_function or self.stackshot.new_frame_loaded:
       self.send('info args')
       for arg in self.stackshot.arg_names():
         self.send('p &%s' % arg)
