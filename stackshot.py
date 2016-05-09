@@ -1,6 +1,6 @@
 ########################################
 # Stack Shot Class
-# 
+ 
 ########################################
 import re
 
@@ -31,7 +31,7 @@ class StackShot:
     self.changed_words = set()
 
     self.saved_rbp = None
-    self.args = {}
+    self.args = []
     self.highest_arg_addr = None
     self.local_vars = []
 
@@ -64,7 +64,7 @@ class StackShot:
     for i in xrange(len(local_vars)):
       self.local_vars.append(self.Var(local_vars[i].VarName, local_vars[i].VarValue, local_vars[i].VarAddr))
     for i in xrange(len(arguments)):
-      self.args[arguments[i].ArgName] = [arguments[i].ArgValue, arguments[i].ArgAddr]
+      self.args.append(self.Var(arguments[i].ArgName, arguments[i].ArgValue, arguments[i].ArgAddr))
     for i in xrange(len(assembly)):
       self.instruction_lines.append(assembly[i].InstrContents)
 
@@ -154,9 +154,6 @@ class StackShot:
       self.line_num = None
 
   def ingest_run(self, data):
-    self.new_function = True
-    self.new_line = True
-    self.new_frame_loaded = False
     line_info = data.split('\n')[-1]
     line_num, line = line_info.split('\t')
     self.line = line.strip()
@@ -239,7 +236,7 @@ class StackShot:
 
     # Collect memory below base pointer until bottom of red zone
     num_below = (rbp_int - redzone_int) / WORD
-    for i in range(1, num_below):
+    for i in range(1, num_below + 1):
       addresses.append(hex(rbp_int - i * WORD))
 
     return addresses
@@ -254,20 +251,28 @@ class StackShot:
       self.set_local_address(var_name, address)
 
   def ingest_args(self, data):
-    self.highest_arg_addr = None
-    self.args = {}
+    ''' set highest arg address to above the saved instruction pointer '''
+    self.highest_arg_addr = hex(int(self.regs['rbp'], 16) + WORD)
+    self.args = []
     for line in data.split('\n'):
       name, val = line.split(' = ')
-      self.args[name] = [val.strip()]
+      arg = self.Var(name.strip(), value=val.strip())
+      self.args.append(arg)
 
   def set_arg_address(self, arg_name, address):
-    self.args[arg_name].append(address)
-    if self.highest_arg_addr == None or \
-       int(address, 16) > int(self.highest_arg_addr, 16):
+    matching_args = filter(lambda a: a.name == arg_name, self.args)
+    if len(matching_args) == 0:
+      print 'Error: Examining an address of a nonexistent argument.'
+      return
+    if len(matching_args) > 1:
+      print 'Error: Duplicate argument names.'
+      return
+    matching_args[0].address = address
+    if int(address, 16) > int(self.highest_arg_addr, 16):
       self.highest_arg_addr = address
 
   def arg_names(self):
-    return self.args.keys()
+    return [arg.name for arg in self.args]
 
   def ingest_locals(self, data):
     self.local_vars = []
