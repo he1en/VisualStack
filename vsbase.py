@@ -75,8 +75,6 @@ class visual_stack:
       if contents is not None:
         curr_stack = contents
         local_code = vsdb.getLocalCode(contents.line_num)
-        print curr_stack.args
-        #print curr_stack.local_vars
     except Exception as e:
       t.rollback()
       print str(e)
