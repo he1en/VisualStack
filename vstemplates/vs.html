@@ -19,12 +19,20 @@
   {% if localcode %}
     {% for line in localcode %}
     {% if stack.line_num == line.split()[0]|int %}
-    <b> {{ line }} &nbsp;&nbsp;&nbsp;&nbsp; {{ stack.instruction }}</b><br>
+    <b> {{ line }}</b><br>
     {% else %}
     <span> {{ line }} </span><br>
     {% endif %}
     {% endfor %}
   {% endif %}
+
+  {% for i in range(stack.instruction_lines|length) %}
+  {% if stack.curr_instruction_index == i %}
+  <b> {{ stack.instruction_lines[i] }}</b><br>
+  {% else %}
+  <span> {{ stack.instruction_lines[i] }} </span><br>
+  {% endif %}
+  {% endfor %}
 
   <h4>Registers</h4>
   <table border="1" style="width:100%">

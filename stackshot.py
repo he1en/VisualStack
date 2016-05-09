@@ -46,10 +46,10 @@ class StackShot:
     self.curr_instruction_index = 0
 
   # invoke on a new stackshot instance
-  def hydrate_from_db(self, stackframe, stackwords, registers, local_vars, arguments):
+  def hydrate_from_db(self, stackframe, stackwords, registers, local_vars, arguments, assembly):
     self.line = stackframe[0].LineContents
     self.line_num = stackframe[0].LineNum
-    self.instruction = stackframe[0].Instruction
+    self.curr_instruction_index = stackframe[0].InstrIndex
     self.highest_arg_addr = stackframe[0].HighestArgAddr
 
     for i in xrange(len(registers)):
@@ -65,6 +65,8 @@ class StackShot:
       self.local_vars.append(self.Var(local_vars[i].VarName, local_vars[i].VarValue, local_vars[i].VarAddr))
     for i in xrange(len(arguments)):
       self.args[arguments[i].ArgName] = [arguments[i].ArgValue, arguments[i].ArgAddr]
+    for i in xrange(len(assembly)):
+      self.instruction_lines.append(assembly[i].InstrContents)
 
   def stringify(self):
     # TODO: make this useful
@@ -159,6 +161,10 @@ class StackShot:
     line_num, line = line_info.split('\t')
     self.line = line.strip()
     self.line_num = line_num.strip()
+    try:
+      self.line_num = int(self.line_num)
+    except ValueError:
+      self.line_num = None
 
   def ingest_stepi(self, data):
     line_info = data.split('\n')[0]
