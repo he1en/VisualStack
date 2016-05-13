@@ -2,97 +2,107 @@
 {% block content %}
 {# include the first two lines above to extend the app_base template #}
 
-<form method="POST" action="visualstack" style="max-width:400px; width:100%">
-  <div class="form-group">
-  {#  <input type="text" name="gdb_command" class="form-control" id="gdb_command" />
-  </div>#}
-  <input type="submit" name="start_over" value="Start Over" class="btn btn-primary" />
-  <input type="submit" name="step_back" value="Step Back" class="btn btn-primary" />
-  <input type="submit" name="step_forward"value="Step Forward" class="btn btn-primary" /></div>
-</form>
+<div class="header-bar">
+  <h3 class="header-title">Visual Stack</h3>
 
-  <h3>Visual Stack</h3>
+  <form method="POST" action="visualstack" class="header-button-form">
+    <div class="form-group">
+    <input type="submit" name="start_over" value="Start Over" class="btn btn-primary" />
+    <input type="submit" name="step_back" value="Step Back" class="btn btn-primary" />
+    <input type="submit" name="step_forward"value="Step Forward"
+           class="btn btn-primary" />
+    </div>
+  </form>
+</div>
+
+<div class="main-container row">
   {% if stack %}
-  {# <div class="alert alert-info">Current line: {{ stack.line }}</div>
-  <div class="alert alert-info">Registers: {{ stack.regs }}</div> #}
+  <div class="code-container col-md-4">
+    <h4 class="section-header">Code</h4>
 
-  {% if localcode %}
-    {% for line in localcode %}
-    {% if stack.line_num == line.split()[0]|int %}
-    <b> {{ line }}</b><br>
-    {% else %}
-    <span> {{ line }} </span><br>
+    {% if localcode %}
+      {% for line in localcode %}
+        {% if stack.line_num == line.split()[0]|int %}
+          <b>{{ line }}</b>
+
+	  <div class="assembly-container">
+            {% for i in range(stack.instruction_lines|length) %}
+              <div>
+	      {% if stack.curr_instruction_index == i %}
+                <b>{{ stack.instruction_lines[i] }}</b>
+	      {% else %}
+                {{ stack.instruction_lines[i] }}
+	      {% endif %}
+              </div>
+             {% endfor %}
+          </div>
+        {% else %}
+          <span>{{ line }}</span><br>
+        {% endif %}
+      {% endfor %}
     {% endif %}
+ </div>
+
+  <div class="registers-container col-md-2">
+    <h4 class="section-header">Registers</h4>
+    <table class="table table-condensed">
+      {% for regname in stack.ordered_regs %}
+        <tr>
+          <td> {{ regname }} </td>
+          <td>
+	    {% if regname in stack.changed_regs %}
+            <b>{{ stack.regs[regname] }}</b>
+            {% else %}
+            {{ stack.regs[regname] }}
+            {% endif %}
+	  </td>
+	</tr>
+      {% endfor %}
+    </table>
+  </div>
+
+  <div class="stack-container col-md-6">
+    <h4 class="section-header">Stack</h4>
+    <table style="width:100%">
+      <tr>
+        <td width="33.3%">Address</td>
+        <td width="33.3%">Memory Contents</td>
+        <td width="33.3"><b>Arguments</b> and Local Variables</td>
+     </tr>
+    {% for k in stack.ordered_addresses %}
+      <tr>
+        {% if k|hex_to_int > stack.highest_arg_addr|hex_to_int %} 
+          <td bgcolor=#d9d9d9>{{ k }}</td>
+          <td bgcolor=#d9d9d9>{{ stack.words[k] }}</td>
+        {% elif k|hex_to_int < stack.regs['rsp']|hex_to_int and k in stack.changed_words %}
+          <td bgcolor=#ff6666><b>{{ k }}</b></td>
+          <td bgcolor=#ff6666><b>{{ stack.words[k] }}</b></td>
+        {% elif k|hex_to_int < stack.regs['rsp']|hex_to_int %}
+          <td bgcolor=#ff6666>{{ k }}</td>
+          <td bgcolor=#ff6666>{{ stack.words[k] }}</td>
+        {% elif k in stack.changed_words %}
+          <td><b>{{ k }}</b></td>
+          <td><b>{{ stack.words[k] }}</b></td>
+        {% else %}
+          <td>{{ k }}</td>
+          <td>{{ stack.words[k] }}</td>
+        {% endif %}
+        {% for arg in stack.args %}
+          {% if arg.address|hex_to_int >= k|hex_to_int and (arg.address|hex_to_int - 8) < k|hex_to_int %}
+            <td><b>&#60;&#45;&#45; {{ arg.name }} &#61; {{ arg.value }}</b></td>
+          {% endif %}
+        {% endfor %}
+        {% for var in stack.local_vars %}
+          {% if var.address|hex_to_int >= k|hex_to_int and (var.address|hex_to_int - 8) < k|hex_to_int %}
+            <td>&#60;&#45;&#45; {{ var.name }} &#61; {{ var.value }}</td>
+          {% endif %}
+        {% endfor %}
+      </tr>
     {% endfor %}
-  {% endif %}
+    </table>
+  </div>
 
-  {% for i in range(stack.instruction_lines|length) %}
-  {% if stack.curr_instruction_index == i %}
-  <b> {{ stack.instruction_lines[i] }}</b><br>
-  {% else %}
-  <span> {{ stack.instruction_lines[i] }} </span><br>
-  {% endif %}
-  {% endfor %}
+{% endif %}
+</div>
 
-  <h4>Registers</h4>
-  <table border="1" style="width:100%">
-    <tr>
-      {% for regname in stack.ordered_regs %}
-      <td width="6.25%"> {{ regname }}</td>
-      {% endfor %}
-    </tr>
-    <tr>
-      {% for regname in stack.ordered_regs %}
-      {% if regname in stack.changed_regs %}
-      <td><b>{{ stack.regs[regname] }}</b></td>
-      {% else %}
-      <td>{{ stack.regs[regname] }}</td>
-      {% endif %}
-      {% endfor %}
-    </tr>
-  </table> 
-
-  <h4>Stack</h4>
-  <table border="1" style="width:100%">
-    <tr>
-      <td width="33.3%">Address</td>
-      <td width="33.3%">Memory Contents</td>
-      <td width="33.3"><b>Arguments</b> and Local Variables</td>
-    </tr>
-  {% for k in stack.ordered_addresses %}
-    <tr>
-      {% if k|hex_to_int > stack.highest_arg_addr|hex_to_int %} 
-      <td bgcolor=#d9d9d9>{{ k }}</td>
-      <td bgcolor=#d9d9d9>{{ stack.words[k] }}</td>
-      {% elif k|hex_to_int < stack.regs['rsp']|hex_to_int and k in stack.changed_words %}
-      <td bgcolor=#ff6666><b>{{ k }}</b></td>
-      <td bgcolor=#ff6666><b>{{ stack.words[k] }}</b></td>
-      {% elif k|hex_to_int < stack.regs['rsp']|hex_to_int %}
-      <td bgcolor=#ff6666>{{ k }}</td>
-      <td bgcolor=#ff6666>{{ stack.words[k] }}</td>
-      {% elif k in stack.changed_words %}
-      <td><b>{{ k }}</b></td>
-      <td><b>{{ stack.words[k] }}</b></td>
-      {% else %}
-      <td>{{ k }}</td>
-      <td>{{ stack.words[k] }}</td>
-      {% endif %}
-      {% for arg in stack.args %}
-        {% if arg.address|hex_to_int >= k|hex_to_int and (arg.address|hex_to_int - 8) < k|hex_to_int %}
-          <td><b>&#60;&#45;&#45; {{ arg.name }} &#61; {{ arg.value }}</b></td>
-        {% endif %}
-      {% endfor %}
-      {% for var in stack.local_vars %}
-        {% if var.address|hex_to_int >= k|hex_to_int and (var.address|hex_to_int - 8) < k|hex_to_int %}
-          <td>&#60;&#45;&#45; {{ var.name }} &#61; {{ var.value}}</td>
-        {% endif %}
-      {% endfor %}
-    </tr>
-  {% endfor %}
-  </table>
-
-  {# <div class="alert alert-info">Words: {{ stack.words }}</div> #}
-  {% endif %}
-{# also make sure to include this very last line as well #}
 {% endblock %}
-

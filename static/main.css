@@ -8,6 +8,21 @@
   width: 100%;
 }
 
+.section-header {
+  padding-below: 10px;
+}
+
 .main-container {
   padding-top: 100px;
+}
+
+.assembly-container {
+  padding-left: 50px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+
+.code-container {
+  padding-left: 60px;
 }
