@@ -72,29 +72,29 @@
     {% for k in stack.ordered_addresses %}
       <tr>
         {% if k|string > stack.highest_arg_addr|string %} 
-        <td bgcolor=#d9d9d9>{{ k }}</td>
-        <td bgcolor=#d9d9d9>{{ stack.words[k] }}</td>
+          <td bgcolor=#d9d9d9>{{ k }}</td>
+          <td bgcolor=#d9d9d9>{{ stack.words[k] }}</td>
         {% elif k|string < stack.regs['rsp']|string and k in stack.changed_words %}
-        <td bgcolor=#ff6666><b>{{ k }}</b></td>
-        <td bgcolor=#ff6666><b>{{ stack.words[k] }}</b></td>
+          <td bgcolor=#ff6666><b>{{ k }}</b></td>
+          <td bgcolor=#ff6666><b>{{ stack.words[k] }}</b></td>
         {% elif k|string < stack.regs['rsp']|string %}
-        <td bgcolor=#ff6666>{{ k }}</td>
-        <td bgcolor=#ff6666>{{ stack.words[k] }}</td>
+          <td bgcolor=#ff6666>{{ k }}</td>
+          <td bgcolor=#ff6666>{{ stack.words[k] }}</td>
         {% elif k in stack.changed_words %}
-        <td><b>{{ k }}</b></td>
-        <td><b>{{ stack.words[k] }}</b></td>
+          <td><b>{{ k }}</b></td>
+          <td><b>{{ stack.words[k] }}</b></td>
         {% else %}
-        <td>{{ k }}</td>
-        <td>{{ stack.words[k] }}</td>
+          <td>{{ k }}</td>
+          <td>{{ stack.words[k] }}</td>
         {% endif %}
         {% for arg in stack.args %}
-          {% if arg.address|string == k|string or arg.active %}
+          {% if arg.address|string == k|string %}
             <td><b>&#60;&#45;&#45; {{ arg.name }} &#61; {{ arg.value }}</b></td>
           {% endif %}
         {% endfor %}
         {% for var in stack.local_vars %}
           {% if var.address|string == k|string %}
-            <td>&#60;&#45;&#45; {{ var.name }} &#61; {{ var.value}}</td>
+            <td>&#60;&#45;&#45; {{ var.name }} &#61; {{ var.value }}</td>
           {% endif %}
         {% endfor %}
       </tr>
