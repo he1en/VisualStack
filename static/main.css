@@ -1,0 +1,13 @@
+.header-bar { 
+  position: fixed;
+  background-color: #ffffff;
+}
+
+.header-button-form {
+  max-width: 400px;
+  width: 100%;
+}
+
+.main-container {
+  padding-top: 100px;
+}
