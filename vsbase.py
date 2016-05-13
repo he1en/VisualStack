@@ -9,6 +9,8 @@ from jinja2 import Environment, FileSystemLoader
 import vsdb
 import gdb_runner
 
+def hex_to_int(hexstring):
+  return int(hexstring, 16)
 
 # helper method to render a template in the templates/ directory
 #
@@ -27,6 +29,8 @@ def render_template(template_name, **context):
             )
     jinja_env.globals.update(globals)
 
+    # in both of these instances, the 'hex' representation is a string
+    jinja_env.filters['hex_to_int'] = hex_to_int
     web.header('Content-Type','text/html; charset=utf-8', unique=True)
 
     return jinja_env.get_template(template_name).render(context)
