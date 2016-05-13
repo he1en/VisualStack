@@ -45,7 +45,7 @@ class visual_stack:
       contents = vsdb.getContentsForStep(currStep)
       if contents is not None:
         curr_stack = contents
-        local_code = vsdb.getLocalCode(contents.line_num)
+        local_code, local_assembly = vsdb.getLocalCode(contents.line_num, contents.curr_instruction_index)
     except Exception as e:
       t.rollback()
       print str(e)
@@ -74,7 +74,7 @@ class visual_stack:
         vsdb.setStep(currStep + step_direction)
       if contents is not None:
         curr_stack = contents
-        local_code = vsdb.getLocalCode(contents.line_num)
+        local_code, local_assembly = vsdb.getLocalCode(contents.line_num, contents.curr_instruction_index)
     except Exception as e:
       t.rollback()
       print str(e)

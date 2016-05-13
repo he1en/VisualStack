@@ -43,7 +43,6 @@ def getContentsForStep(step):
   query_string4 = 'select * from LocalVars where StepNum = $stepNum'
   query_string5 = 'select * from FnArguments where StepNum = $stepNum'
 
-
   result1 = query(query_string1, input_vars)
   if result1 is None or len(result1) == 0:
     return None
@@ -52,19 +51,27 @@ def getContentsForStep(step):
   result4 = query(query_string4, input_vars)
   result5 = query(query_string5, input_vars)
 
+  # must happen once know result1 is not None
+  query_string6 = 'select * from Assembly where CLineNum = $cLineNum order by InstrLineNum asc'
+  input_vars = {'cLineNum': result1[0].LineNum}
+  result6 = query(query_string6, input_vars)
+
   ss = stackshot.StackShot()
-  ss.hydrate_from_db(result1, result2, result3, result4, result5)
+  ss.hydrate_from_db(result1, result2, result3, result4, result5, result6)
   return ss
 
 # returns list starting 2 lines before and ending 2 lines after the line number passed in
-def getLocalCode(line_num):
-  if line_num is None:
+# and list starting 2 lines before and ending 2 lines after the current assembly instruction
+def getLocalCode(line_num, instr_index):
+  if line_num is None or instr_index is None:
     return None
   query_string = 'select LineContents from Code order by LineNum asc limit $start, $end'
-  input_vars = {'start': str(max(line_num-3,0)), 'end': 5}
-  #input_vars = {'start': str(max(line_num-3,0)), 'end': str(line_num+2)}
-  q = query(query_string, input_vars)
-  return [l.LineContents for l in query(query_string, input_vars)]
+  input_vars = {'start': str(max(line_num-3,0)), 'end': 5} 
+  code_contents = query(query_string, input_vars)
+  query_string = 'select InstrContents from Assembly where CLineNum = $lineNum order by InstrLineNum asc limit $start, $end'
+  input_vars = {'lineNum': line_num, 'start': str(max(instr_index-3, 0)), 'end': 5}
+  assembly_contents = query(query_string, input_vars)
+  return [l.LineContents for l in code_contents] , [a.InstrContents for a in assembly_contents]
 
 # writes the entire code file to the db
 def writeCode(code_lines):
@@ -87,12 +94,12 @@ def setStep(curr_step):
 # never invoked by clients of this module
 # adds input contents (StackShot) into the db for the input step_num
 def addStep(step_num, contents):
-  query_string = 'insert into StackFrame values($stepNum, $linenum, $line, $instruction, $highestArgAddr)'
+  query_string = 'insert into StackFrame values($stepNum, $linenum, $line, $instructionIndex, $highestArgAddr)'
   input_vars = {}
   input_vars['stepNum'] = step_num
   input_vars['linenum'] = contents.line_num
   input_vars['line'] = contents.line
-  input_vars['instruction'] = contents.instruction
+  input_vars['instructionIndex'] = contents.curr_instruction_index
   input_vars['highestArgAddr'] = contents.highest_arg_addr
   db.query(query_string, input_vars)
 
@@ -119,6 +126,14 @@ def addStep(step_num, contents):
     query_string = 'insert into FnArguments values($stepNum, $argName, $argValue, $argAddr)'
     input_vars = {'stepNum': step_num, 'argName': arg.name, 'argValue': arg.value, 'argAddr': arg.address}
     db.query(query_string, input_vars)
+
+  if contents.new_line:
+    for index in xrange(len(contents.instruction_lines)):
+      query_string = 'insert into Assembly values($cLineNum, $instrLineNum, $instrContents)'
+      input_vars = {'cLineNum': contents.line_num, 'instrLineNum': index, 'instrContents': contents.instruction_lines[index]}
+      print index
+      print contents.instruction_lines
+      db.query(query_string, input_vars)
 
 def runnerStep(step, contents):
   t = transaction()
