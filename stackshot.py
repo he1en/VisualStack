@@ -13,10 +13,11 @@ WORD = 8
 class StackShot:
 
   class Var:
-    def __init__(self, name, value=None, address=None):
+    def __init__(self, name, value=None, address=None, active=False):
       self.name = name
       self.value = value
       self.address = address
+      self.active = active
 
   def __init__(self):
     self.line = None  # String, last line number
@@ -41,6 +42,7 @@ class StackShot:
     self.new_line = True
     self.new_function = True
     self.new_frame_loaded = True
+    self.fn_names = []
 
     self.instruction_lines = []
     self.curr_instruction_index = 0
@@ -56,15 +58,23 @@ class StackShot:
       self.regs[registers[i].RegName] = registers[i].RegContents
       if registers[i].StepNum == stackframe[0].StepNum:
         self.changed_regs.add(registers[i].RegName)
+
     for i in xrange(len(stackwords)):
       self.words[stackwords[i].MemAddr] = stackwords[i].MemContents
       if stackwords[i].StepNum == stackframe[0].StepNum:
         self.changed_words.add(stackwords[i].MemAddr)
-    self.ordered_addresses = sorted(self.words.keys(), key = lambda addr: int(addr, 16), reverse=True)
+    self.ordered_addresses = sorted(self.words.keys(),
+                                    key = lambda addr: int(addr, 16),
+                                    reverse=True)
+
     for i in xrange(len(local_vars)):
-      self.local_vars.append(self.Var(local_vars[i].VarName, local_vars[i].VarValue, local_vars[i].VarAddr))
+      self.local_vars.append(self.Var(local_vars[i].VarName,
+                                      local_vars[i].VarValue,
+                                      local_vars[i].VarAddr))
     for i in xrange(len(arguments)):
-      self.args.append(self.Var(arguments[i].ArgName, arguments[i].ArgValue, arguments[i].ArgAddr))
+      self.args.append(self.Var(arguments[i].ArgName,
+                                arguments[i].ArgValue,
+                                arguments[i].ArgAddr))
 
   def stringify(self):
     # TODO: make this useful
@@ -134,6 +144,11 @@ class StackShot:
       self.words[address] = contents
       self.changed_words.add(address)
 
+      for var in self.args + self.local_vars:
+        # TODO: address not on word boundary
+        if var.address == address:
+          var.active = True
+
   def ingest_registers(self, data):
     self.changed_regs = set()
     for register_output in data.split('\n')[:16]: # only want first 16
@@ -156,6 +171,7 @@ class StackShot:
     line_num, line = line_info.split('\t')
     self.line = line.strip()
     self.line_num = line_num.strip()
+    self.fn_names.append('main')
 
   def ingest_stepi(self, data):
     line_info = data.split('\n')[0]
@@ -167,10 +183,14 @@ class StackShot:
       self.new_function = True
       self.new_line = True
       self.new_frame_loaded = False
-      self.line = line_info.split('at')[0].strip()
+      self.clear_args()
+      self.clear_locals()
 
-      search_data = data.replace('\n', ' ').split(self.main_file)[1]
-      self.line_num = re.search(':(\d+)', search_data).group(1)
+      self.line = line_info.split('at')[0].strip()
+      fn_data, line_data = data.replace('\n', ' ').split(self.main_file)
+      self.line_num = re.search(':(\d+)', line_data).group(1)
+      fn_name = re.search('(\w+) \(', fn_data).group(1)
+      self.fn_names.append(fn_name)
 
     elif line_info[:2] != '0x':
       ''' Stepped into new line '''
@@ -207,6 +227,12 @@ class StackShot:
 
   def clear_changed_words(self):
     self.changed_words = set()
+
+  def clear_args(self):
+    self.args = []
+
+  def clear_locals(self):
+    self.local_vars = []
 
   def frame_addresses(self):
     ''' Collects all stack addresses in current frame in descending order. '''
@@ -247,36 +273,51 @@ class StackShot:
   def ingest_args(self, data):
     ''' set highest arg address to above the saved instruction pointer '''
     self.highest_arg_addr = hex(int(self.regs['rbp'], 16) + WORD)
-    self.args = []
+
+    new_args = (len(self.args) == 0)
     for line in data.split('\n'):
       name, val = line.split(' = ')
-      arg = self.Var(name.strip(), value=val.strip())
-      self.args.append(arg)
+      if new_args:
+        arg = self.Var(name.strip(), value=val.strip())
+        self.args.append(arg)
+      else:
+        arg = filter(lambda a: a.name == name, self.args)[0]
+        arg.value = val.strip()
+        if not self.first_time_in_function():
+          # If we're returning back to this function, all args were
+          # already set active.
+          arg.active = True
 
   def set_arg_address(self, arg_name, address):
-    matching_args = filter(lambda a: a.name == arg_name, self.args)
-    if len(matching_args) == 0:
-      print 'Error: Examining an address of a nonexistent argument.'
-      return
-    if len(matching_args) > 1:
-      print 'Error: Duplicate argument names.'
-      return
-    matching_args[0].address = address
+    arg = filter(lambda a: a.name == arg_name, self.args)[0]
+    arg.address = address
     if int(address, 16) > int(self.highest_arg_addr, 16):
       self.highest_arg_addr = address
+    if int(address, 16) > int(self.regs['rbp'], 16) or \
+       self.fn_names[-1] == 'main':
+      # arg was passed on the stack, so its value is already correct
+      arg.active = True
 
   def arg_names(self):
     return [arg.name for arg in self.args]
 
   def ingest_locals(self, data):
-    self.local_vars = []
     if data.strip() == 'No locals.':
       return
+
+    new_locals = (len(self.local_vars) == 0)
     for line in data.split('\n'):
       name, val = line.split(' = ')
-      local = self.Var(name)
-      local.value = val
-      self.local_vars.append(local)
+      if new_locals:
+        var = self.Var(name.strip(), value=val.strip())
+        self.local_vars.append(var)
+      else:
+        var = filter(lambda v: v.name == name, self.local_vars)[0]
+        var.value = val.strip()
+        if not self.first_time_in_function():
+          # If we're returning back to this function, all vars were
+          # already set active.
+          var.active = True
 
   def set_local_address(self, local_name, address):
     for local in self.local_vars:
@@ -285,6 +326,6 @@ class StackShot:
 
   def local_names(self):
     return [local.name for local in self.local_vars]
-
       
-
+  def first_time_in_function(self):
+    return self.fn_names.count(self.fn_names[-1]) == 1

@@ -108,10 +108,14 @@ def addStep(step_num, contents):
       input_vars = {'stepNum': step_num, 'addr': addr, 'mem': w}
       db.query(query_string, input_vars)
   for i, var in enumerate(contents.local_vars):
+    if not var.active:
+      continue
     query_string = 'insert into LocalVars values($stepNum, $varName, $varValue, $varAddr)'
     input_vars = {'stepNum': step_num, 'varName': var.name, 'varValue': var.value, 'varAddr': var.address}
     db.query(query_string, input_vars) 
   for i, arg in enumerate(contents.args):
+    if not arg.active:
+      continue
     query_string = 'insert into FnArguments values($stepNum, $argName, $argValue, $argAddr)'
     input_vars = {'stepNum': step_num, 'argName': arg.name, 'argValue': arg.value, 'argAddr': arg.address}
     db.query(query_string, input_vars)

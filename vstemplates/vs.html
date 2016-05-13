@@ -70,8 +70,8 @@
       <td>{{ stack.words[k] }}</td>
       {% endif %}
       {% for arg in stack.args %}
-        {% if arg.address|string == k|string %}
-          <td><b>&#60;&#45;&#45; {{ arg.name }} &#61; {{ arg.value}}</b></td>
+        {% if arg.address|string == k|string or arg.active %}
+          <td><b>&#60;&#45;&#45; {{ arg.name }} &#61; {{ arg.value }}</b></td>
         {% endif %}
       {% endfor %}
       {% for var in stack.local_vars %}

@@ -99,7 +99,6 @@ class GDBRunner:
     for local in self.stackshot.local_names():
       self.send('p &%s' % local)
 
-
   def step(self):
     ''' Generator which steps once in gdb and yields a stackshot object
         describing the new stack. '''
