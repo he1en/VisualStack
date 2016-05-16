@@ -1,29 +1,27 @@
 # VisualStack
-Visual education tool for students learning about C and how the stack works.
-
-## How It Works
-
-[Describe here how our infrastructure is set up.]
+Visual education tool for students learning about C, assembly, and how the stack works.
 
 ## Getting Started
-VisualStack is designed to serve the students and instructors of **CS107: Computer Organization and Systems** at Stanford University. As such, this document will describe how to use VisualStack within the context of the Stanford [myth cluster](https://web.stanford.edu/class/cs107/guide_editors.html).
+VisualStack is designed to serve the students and instructors of **CS107: Computer Organization and Systems** at Stanford University. As such, this document will describe how to use VisualStack within the context of the Stanford [myth cluster](https://web.stanford.edu/class/cs107/guide_editors.html). The machines in the myth cluster run Ubuntu 14 and are 64-bit.
 
 In the long term, we plan to release an open source version of VisualStack which will be usable outside of this limited context. However, such a version is not available at this time.
 
 ### How To Run VisualStack
-Visual Stack is designed to run on **myth**. To launch, run:
+VisualStack is designed to run on **myth**. To launch, run:
 ```
 ssh sunetid@myth.stanford.edu
 ```
-
 Enter your credentials when prompted. This will log you into one of the myth machines, myth##.
 Next, invoke:
-
 ```
 bash /afs/ir/class/cs107/tools/visualstack.sh <filename>.c
 ```
 
 VisualStack may take a few seconds to run. Eventually, your terminal should output http://00.00.00. At this time, point your browser to [myth##.stanford.edu:8080/visualstack](myth##.stanford.edu:8080/visualstack). You should see your stack in the browser and may interact with it directly there.
+
+## How It Works
+
+When you run the VisualStack bash script, a few things happen. First, vscreate.sql is invoked, which sets up an SQLite database (VisualStack.db)
 
 ## Built With
 
