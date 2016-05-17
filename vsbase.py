@@ -90,6 +90,6 @@ if __name__ == '__main__':
     app = web.application(urls, globals())
     app.add_processor(web.loadhook(vsdb.enforceForeignKey))
     runner = gdb_runner.GDBRunner(sys.argv[2])
-    runner.debug()
+    runner.start()
     runner.run_to_completion()
     app.run()
