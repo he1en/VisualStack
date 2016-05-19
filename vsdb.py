@@ -128,11 +128,14 @@ def addStepI(step_i_num, step_num, contents):
     input_vars = {'stepINum': step_i_num, 'argName': arg.name, 'argValue': arg.value, 'argAddr': arg.address}
     db.query(query_string, input_vars)
 
+# never invoked by clients of this module
+# adds corresponding assembly for line in currstep to db
+def addAssembly(contents):
   if contents.new_line:
     for index in xrange(len(contents.instruction_lines)):
       query_string = 'insert into Assembly values($cLineNum, $instrLineNum, $instrContents)'
       input_vars = {'cLineNum': contents.line_num, 'instrLineNum': index, 'instrContents': contents.instruction_lines[index]}
-      db.query(query_string, input_vars)
+      querySuccess(query_string, input_vars)
 
 def runnerStep(step_i, step, contents):
   t = transaction()
@@ -143,6 +146,7 @@ def runnerStep(step_i, step, contents):
     print str(e)
   else:
     t.commit()
+  addAssembly(contents)
 
 # wrapper method around web.py's db.query method
 # check out http://webpy.org/cookbook/query for more info
