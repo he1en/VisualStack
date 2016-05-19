@@ -27,21 +27,21 @@ def transaction():
 #
 # check out http://webpy.org/cookbook/transactions for examples
 
-# returns the number of the current step saved in the db
+# returns the number of the current stepi saved in the db
 def getCurrStep():
-  query_string = 'select StepNum from CurrStep'
+  query_string = 'select * from CurrStep'
   results = query(query_string)
   # alternatively: return results[0]['currenttime']
-  return results[0].StepNum
+  return results[0].StepINum, results[0].StepNum
 
 # returns a hydrated version of the StackShot for the input step
-def getContentsForStep(step):
-  input_vars = {'stepNum': step}
-  query_string1 = 'select * from StackFrame where StepNum = $stepNum'
-  query_string2 = 'select * from StackWordsDelta where StepNum <= $stepNum group by MemAddr'
-  query_string3 = 'select * from RegistersDelta where StepNum <= $stepNum group by RegName'
-  query_string4 = 'select * from LocalVars where StepNum = $stepNum'
-  query_string5 = 'select * from FnArguments where StepNum = $stepNum'
+def getContentsForStepI(step_i):
+  input_vars = {'stepINum': step_i}
+  query_string1 = 'select * from StackFrame where StepINum = $stepINum'
+  query_string2 = 'select * from StackWordsDelta where StepINum <= $stepINum group by MemAddr'
+  query_string3 = 'select * from RegistersDelta where StepINum <= $stepINum group by RegName'
+  query_string4 = 'select * from LocalVars where StepINum = $stepINum'
+  query_string5 = 'select * from FnArguments where StepINum = $stepINum'
 
   result1 = query(query_string1, input_vars)
   if result1 is None or len(result1) == 0:
@@ -87,15 +87,16 @@ def writeCode(code_lines):
   return querySuccess(''.join(query_list), input_vars)
 
 # sets the curr step in db to be the input
-def setStep(curr_step):
-  query_string = 'update CurrStep set StepNum = $nextStep'
-  return querySuccess(query_string, {'nextStep': curr_step})
+def setStep(curr_step_i, curr_step):
+  query_string = 'update CurrStep set StepINum = $nextStepI, StepNum = $nextStep'
+  return querySuccess(query_string, {'nextStepI': curr_step_i, 'nextStep': curr_step})
 
 # never invoked by clients of this module
 # adds input contents (StackShot) into the db for the input step_num
-def addStep(step_num, contents):
-  query_string = 'insert into StackFrame values($stepNum, $linenum, $line, $instructionIndex, $highestArgAddr)'
+def addStepI(step_i_num, step_num, contents):
+  query_string = 'insert into StackFrame values($stepINum, $stepNum, $linenum, $line, $instructionIndex, $highestArgAddr)'
   input_vars = {}
+  input_vars['stepINum'] = step_i_num
   input_vars['stepNum'] = step_num
   input_vars['linenum'] = contents.line_num
   input_vars['line'] = contents.line
@@ -105,40 +106,38 @@ def addStep(step_num, contents):
 
   for rname, rcontents in contents.regs.iteritems():
     if rname in contents.changed_regs:
-      query_string = 'insert into RegistersDelta values($stepNum, $regname, $mem)'
-      input_vars = {'stepNum': step_num, 'regname': rname, 'mem': rcontents}
+      query_string = 'insert into RegistersDelta values($stepINum, $regname, $mem)'
+      input_vars = {'stepINum': step_i_num, 'regname': rname, 'mem': rcontents}
       db.query(query_string, input_vars)
 
   for addr, w in contents.words.iteritems():
     if addr in contents.changed_words:
-      query_string = 'insert into StackWordsDelta values($stepNum, $addr, $mem)'
-      input_vars = {'stepNum': step_num, 'addr': addr, 'mem': w}
+      query_string = 'insert into StackWordsDelta values($stepINum, $addr, $mem)'
+      input_vars = {'stepINum': step_i_num, 'addr': addr, 'mem': w}
       db.query(query_string, input_vars)
   for i, var in enumerate(contents.local_vars):
     if not var.active:
       continue
-    query_string = 'insert into LocalVars values($stepNum, $varName, $varValue, $varAddr)'
-    input_vars = {'stepNum': step_num, 'varName': var.name, 'varValue': var.value, 'varAddr': var.address}
+    query_string = 'insert into LocalVars values($stepINum, $varName, $varValue, $varAddr)'
+    input_vars = {'stepINum': step_i_num, 'varName': var.name, 'varValue': var.value, 'varAddr': var.address}
     db.query(query_string, input_vars) 
   for i, arg in enumerate(contents.args):
     if not arg.active:
       continue
-    query_string = 'insert into FnArguments values($stepNum, $argName, $argValue, $argAddr)'
-    input_vars = {'stepNum': step_num, 'argName': arg.name, 'argValue': arg.value, 'argAddr': arg.address}
+    query_string = 'insert into FnArguments values($stepINum, $argName, $argValue, $argAddr)'
+    input_vars = {'stepINum': step_i_num, 'argName': arg.name, 'argValue': arg.value, 'argAddr': arg.address}
     db.query(query_string, input_vars)
 
   if contents.new_line:
     for index in xrange(len(contents.instruction_lines)):
       query_string = 'insert into Assembly values($cLineNum, $instrLineNum, $instrContents)'
       input_vars = {'cLineNum': contents.line_num, 'instrLineNum': index, 'instrContents': contents.instruction_lines[index]}
-      print index
-      print contents.instruction_lines
       db.query(query_string, input_vars)
 
-def runnerStep(step, contents):
+def runnerStep(step_i, step, contents):
   t = transaction()
   try:
-    addStep(step, contents)
+    addStepI(step_i, step, contents)
   except Exception as e:
     t.rollback()
     print str(e)

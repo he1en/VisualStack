@@ -56,12 +56,12 @@ class StackShot:
 
     for i in xrange(len(registers)):
       self.regs[registers[i].RegName] = registers[i].RegContents
-      if registers[i].StepNum == stackframe[0].StepNum:
+      if registers[i].StepINum == stackframe[0].StepINum:
         self.changed_regs.add(registers[i].RegName)
 
     for i in xrange(len(stackwords)):
       self.words[stackwords[i].MemAddr] = stackwords[i].MemContents
-      if stackwords[i].StepNum == stackframe[0].StepNum:
+      if stackwords[i].StepINum == stackframe[0].StepINum:
         self.changed_words.add(stackwords[i].MemAddr)
     self.ordered_addresses = sorted(self.words.keys(),
                                     key = lambda addr: int(addr, 16),

@@ -45,8 +45,8 @@ class visual_stack:
     local_code = None
     t = vsdb.transaction()
     try:
-      currStep = vsdb.getCurrStep()
-      contents = vsdb.getContentsForStep(currStep)
+      currStepI, currStep = vsdb.getCurrStep()
+      contents = vsdb.getContentsForStepI(currStepI)
       if contents is not None:
         curr_stack = contents
         local_code, local_assembly = vsdb.getLocalCode(contents.line_num, contents.curr_instruction_index)
@@ -70,12 +70,16 @@ class visual_stack:
     t = vsdb.transaction()
     try:
       if step_direction is None:
-        vsdb.setStep(0)
-        contents = vsdb.getContentsForStep(0)
+        vsdb.setStep(0, 0)
+        contents = vsdb.getContentsForStepI(0)
+        print contents.new_line
       else:
-        currStep = vsdb.getCurrStep()
-        contents = vsdb.getContentsForStep(currStep + step_direction)
-        vsdb.setStep(currStep + step_direction)
+        currStepI, currStep = vsdb.getCurrStep()
+        contents = vsdb.getContentsForStepI(currStepI + step_direction)
+        print contents.new_line
+        if contents.new_line:
+          currStep += 1
+        vsdb.setStep(currStepI + step_direction, currStep)
       if contents is not None:
         curr_stack = contents
         local_code, local_assembly = vsdb.getLocalCode(contents.line_num, contents.curr_instruction_index)
