@@ -10,7 +10,7 @@ regs = ['rsp', 'rbp', 'rax', 'rbx', 'rcx', 'rdx', 'rsi', 'rdi',
 REDZONE_SIZE = 16
 WORD = 8
 
-class StackShot:
+class StackShot(object):
 
   class Var:
     def __init__(self, name, value=None, address=None, active=False):
@@ -20,86 +20,90 @@ class StackShot:
       self.active = active
 
   def __init__(self):
-    self.line = None  # String, last line number
-    self.line_num = None
-    self.instruction = None
-    self.regs = {r: 'N/A' for r in regs}
-    self.ordered_regs = regs
-    self.changed_regs = set()
+    self._line = None
+    self._line_num = None
 
-    self.words = {}
-    self.ordered_addresses = []
-    self.changed_words = set()
+    self._regs = {r: 'N/A' for r in regs}
+    self._ordered_regs = regs
+    self._changed_regs = set()
 
-    self.saved_rbp = None
-    self.args = []
-    self.highest_arg_addr = None
-    self.local_vars = []
+    self._words = {}
+    self._ordered_addresses = []
+    self._changed_words = set()
 
-    self.main_file = None
-    self.src_files = []
+    self._saved_rbp = None
+    self._args = []
+    self._highest_arg_addr = None
+    self._local_vars = []
 
-    self.new_line = True
-    self.new_function = True
-    self.new_frame_loaded = True
-    self.fn_names = []
+    self._main_file = None
+    self._src_files = []
 
-    self.instruction_lines = []
-    self.curr_instruction_index = 0
-    self.line_instruction_limits = None
+    self._fn_names = []
+
+    self._instruction_lines = []
+    self._curr_instruction_index = 0
 
   # invoke on a new stackshot instance
-  def hydrate_from_db(self, stackframe, stackwords, registers, local_vars, arguments, assembly):
-    self.line = stackframe[0].LineContents
-    self.line_num = stackframe[0].LineNum
-    self.curr_instruction_index = stackframe[0].InstrIndex
-    self.highest_arg_addr = stackframe[0].HighestArgAddr
+  def hydrate_from_db(self, stackframe, stackwords, registers, local_vars,\
+                      arguments, assembly):
+    self._line = stackframe[0].LineContents
+    self._line_num = stackframe[0].LineNum
+    self._curr_instruction_index = stackframe[0].InstrIndex
+    self._highest_arg_addr = stackframe[0].HighestArgAddr
 
     for i in xrange(len(registers)):
-      self.regs[registers[i].RegName] = registers[i].RegContents
+      self._regs[registers[i].RegName] = registers[i].RegContents
       if registers[i].StepNum == stackframe[0].StepNum:
-        self.changed_regs.add(registers[i].RegName)
+        self._changed_regs.add(registers[i].RegName)
 
     for i in xrange(len(stackwords)):
-      self.words[stackwords[i].MemAddr] = stackwords[i].MemContents
+      self._words[stackwords[i].MemAddr] = stackwords[i].MemContents
       if stackwords[i].StepNum == stackframe[0].StepNum:
-        self.changed_words.add(stackwords[i].MemAddr)
-    self.ordered_addresses = sorted(self.words.keys(),
+        self._changed_words.add(stackwords[i].MemAddr)
+    self._ordered_addresses = sorted(self._words.keys(),
                                     key = lambda addr: int(addr, 16),
                                     reverse=True)
 
     for i in xrange(len(local_vars)):
-      self.local_vars.append(self.Var(local_vars[i].VarName,
+      self._local_vars.append(self._Var(local_vars[i].VarName,
                                       local_vars[i].VarValue,
                                       local_vars[i].VarAddr))
     for i in xrange(len(arguments)):
-      self.args.append(self.Var(arguments[i].ArgName,
+      self._args.append(self._Var(arguments[i].ArgName,
                                 arguments[i].ArgValue,
                                 arguments[i].ArgAddr))
 
     for i in xrange(len(assembly)):
-      self.instruction_lines.append(assembly[i].InstrContents)
+      self._instruction_lines.append(assembly[i].InstrContents)
 
   def stringify(self):
     # TODO: make this useful
-    return self.line
+    return self._line
 
   def clear_changed_words(self):
-    self.changed_words = set()
+    self._changed_words = set()
+
+  def clear_changed_regs(self):
+    self._changed_regs = set()
 
   def clear_args(self):
-    self.args = []
+    self._args = []
 
   def clear_locals(self):
-    self.local_vars = []
+    self._local_vars = []
+
+  def clear_instruction_lines(self):
+    self._instruction_lines = []
+    self._curr_instruction_index = 0
 
   def frame_addresses(self):
     ''' Collects all stack addresses in current frame in descending order. '''
     addresses = []
-    rbp_int = int(self.regs['rbp'], 16)
-    rsp_int = int(self.regs['rsp'], 16)
+    rbp_int = int(self._regs['rbp'], 16)
+    rsp_int = int(self._regs['rsp'], 16)
     redzone_int = rsp_int - REDZONE_SIZE * WORD
-    saved_rbp_int = int(self.saved_rbp, 16)
+    saved_rbp_int = int(self._saved_rbp, 16)
 
     # Collect memory above base pointer until saved base pointer
     if saved_rbp_int == 0:
@@ -111,7 +115,7 @@ class StackShot:
     for i in range(num_above):
       addresses.append(hex(saved_rbp_int - i * WORD))
       
-    addresses.append(self.regs['rbp'])
+    addresses.append(self._regs['rbp'])
 
     # Collect memory below base pointer until bottom of red zone
     num_below = (rbp_int - redzone_int) / WORD
@@ -121,25 +125,131 @@ class StackShot:
     return addresses
 
   def set_arg_address(self, arg_name, address):
-    arg = filter(lambda a: a.name == arg_name, self.args)[0]
+    arg = filter(lambda a: a.name == arg_name, self._args)[0]
     arg.address = address
-    if int(address, 16) > int(self.highest_arg_addr, 16):
-      self.highest_arg_addr = address
-    if int(address, 16) > int(self.regs['rbp'], 16) or \
-       self.fn_names[-1] == 'main':
+    if int(address, 16) > int(self._highest_arg_addr, 16):
+      self._highest_arg_addr = address
+    if int(address, 16) > int(self._regs['rbp'], 16) or \
+       self._fn_names[-1] == 'main':
       # arg was passed on the stack, so its value is already correct
       arg.active = True
 
   def arg_names(self):
-    return [arg.name for arg in self.args]
+    return [arg.name for arg in self._args]
 
   def set_local_address(self, local_name, address):
-    for local in self.local_vars:
+    for local in self._local_vars:
       if local.name == local_name:
         local.address = address
 
   def local_names(self):
-    return [local.name for local in self.local_vars]
+    return [local.name for local in self._local_vars]
       
   def first_time_in_function(self):
-    return self.fn_names.count(self.fn_names[-1]) == 1
+    return self._fn_names.count(self._fn_names[-1]) == 1
+
+######### GETTERS AND SETTERS ############
+  @property
+  def line(self):
+    return self._line
+
+  @line.setter
+  def line(self, value):
+    self._line = value
+
+  @property
+  def line_num(self):
+    return self._line_num
+
+  @line_num.setter
+  def line_num(self, value):
+    self._line_num = value
+
+  @property
+  def regs(self):
+    return self._regs
+
+  def set_register(self, register, value):
+    self._regs[register] = value
+    self._changed_regs.add(register)
+
+  def is_changed_register(self, register):
+    return register in self._changed_regs
+
+  @property
+  def words(self):
+    return self._words
+
+  def set_word(self, address, word):
+    self._words[address] = word
+    self._changed_words.add(address)
+    
+    for var in self._args + self._local_vars:
+      # TODO: address not on word boundary
+      if var.address == address:
+        var.active = True
+
+  def is_changed_word(self, address):
+    return address in self._changed_words
+
+  @property
+  def saved_rbp(self):
+    return self._saved_rbp
+
+  @saved_rbp.setter
+  def saved_rbp(self, value):
+    self._saved_rbp = value
+
+  @property
+  def args(self):
+    return self._args
+
+  @property
+  def local_vars(self):
+    return self._local_vars
+
+  @property
+  def highest_arg_addr(self):
+    return self._highest_arg_addr
+
+  @highest_arg_addr.setter
+  def highest_arg_addr(self, value):
+    self._highest_arg_addr = value
+
+  @property
+  def main_file(self):
+    return self._main_file
+
+  @main_file.setter
+  def main_file(self, value):
+    self._main_file = value
+
+  @property
+  def src_files(self):
+    return self._src_files
+
+  def add_src_file(self, filename):
+    self._src_files.append(filename)
+
+  @property
+  def fn_names(self):
+    return self._fn_names
+
+  def add_fn_name(self, fnname):
+    self._fn_names.append(fnname)
+
+  @property
+  def instruction_lines(self):
+    return self._instruction_lines
+
+  def add_instruction_line(self, line):
+    self._instruction_lines.append(line)
+
+  @property
+  def curr_instruction_index(self):
+    return self._curr_instruction_index
+
+  @curr_instruction_index.setter
+  def curr_instruction_index(self, value):
+    self._curr_instruction_index = value
+

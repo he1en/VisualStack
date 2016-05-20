@@ -104,13 +104,13 @@ def addStep(step_num, contents):
   db.query(query_string, input_vars)
 
   for rname, rcontents in contents.regs.iteritems():
-    if rname in contents.changed_regs:
+    if contents.is_changed_register(rname):
       query_string = 'insert into RegistersDelta values($stepNum, $regname, $mem)'
       input_vars = {'stepNum': step_num, 'regname': rname, 'mem': rcontents}
       db.query(query_string, input_vars)
 
   for addr, w in contents.words.iteritems():
-    if addr in contents.changed_words:
+    if contents.is_changed_word(addr):
       query_string = 'insert into StackWordsDelta values($stepNum, $addr, $mem)'
       input_vars = {'stepNum': step_num, 'addr': addr, 'mem': w}
       db.query(query_string, input_vars)
