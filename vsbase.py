@@ -36,7 +36,7 @@ def render_template(template_name, **context):
     return jinja_env.get_template(template_name).render(context)
 
 urls = ('/visualstack', 'visual_stack')
-#writer = gdb_writer.GDBWriter()
+step_directions = ['step_forward', 'stepi_forward', 'step_back', 'stepi_back']
 
 class visual_stack:
   def GET(self):
@@ -45,11 +45,11 @@ class visual_stack:
     local_code = None
     t = vsdb.transaction()
     try:
-      currStepI, currStep = vsdb.getCurrStep()
-      contents = vsdb.getContentsForStepI(currStepI)
+      currStep, currStepI = vsdb.getCurrStep()
+      contents = vsdb.getContentsForStep(currStep, currStepI)
       if contents is not None:
         curr_stack = contents
-        local_code, local_assembly = vsdb.getLocalCode(contents.line_num, contents.curr_instruction_index)
+        local_code = vsdb.getLocalCode(contents.line_num, currStep, currStepI)
     except Exception as e:
       t.rollback()
       print str(e)
@@ -59,30 +59,28 @@ class visual_stack:
   def POST(self):
     post_params = web.input()
     step_direction = None
-    if 'step_forward' in post_params:
-      step_direction = 1
-    elif 'step_back' in post_params:
-      step_direction = -1
+    for step_dir in step_directions:
+      if step_dir in post_params:
+        step_direction = step_dir
 
     # for vsdb, get current step, increment stepper in correct direction, get output
     curr_stack = None
     local_code = None
     t = vsdb.transaction()
+    currStep = 0
+    currStepI = 0
     try:
       if step_direction is None:
-        vsdb.setStep(0, 0)
-        contents = vsdb.getContentsForStepI(0)
-        print contents.new_line
+        vsdb.setStep(currStep, currStepI)
+        contents = vsdb.getContentsForStep(currStep, currStepI)
       else:
-        currStepI, currStep = vsdb.getCurrStep()
-        contents = vsdb.getContentsForStepI(currStepI + step_direction)
-        print contents.new_line
-        if contents.new_line:
-          currStep += 1
-        vsdb.setStep(currStepI + step_direction, currStep)
+        currStep, currStepI  = vsdb.getCurrStep()
+        nextStep, nextStepI = vsdb.getNextStep(currStep, currStepI, step_direction)
+        contents = vsdb.getContentsForStep(nextStep, nextStepI, step_direction)
+        vsdb.setStep(nextStep, nextStepI)
       if contents is not None:
         curr_stack = contents
-        local_code, local_assembly = vsdb.getLocalCode(contents.line_num, contents.curr_instruction_index)
+        local_code = vsdb.getLocalCode(contents.line_num, currStep, currStepI)
     except Exception as e:
       t.rollback()
       print str(e)

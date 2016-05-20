@@ -115,10 +115,10 @@ class GDBRunner:
     step_i = 0
     step_full = -1
     for output in self.step():
-      print 'step_i: %d; step: %d is_new_line: %r' % (step_i, step_full, output.new_line)
       if output.new_line:
         step_full += 1
-      vsdb.runnerStep(step_i, step_full, output)
+        step_i = 0
+      vsdb.runnerStep(step_full, step_i, output)
       step_i += 1
     self.terminate()
 
