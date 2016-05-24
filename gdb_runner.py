@@ -66,7 +66,7 @@ class GDBRunner:
 
   def debug(self):
     self.running = True
-    vsdb.setStep(0)
+    vsdb.setStep(0, 0)
     self.send('b main')
     self.send('run')
     self.skip_other_sources()
@@ -112,10 +112,14 @@ class GDBRunner:
 
   def run_to_completion(self):
     ''' To be called AFTER debug. '''
-    step = 0
+    step_i = 0
+    step_full = -1
     for output in self.step():
-      vsdb.runnerStep(step, output)
-      step += 1
+      if output.new_line:
+        step_full += 1
+        step_i = 0
+      vsdb.runnerStep(step_full, step_i, output)
+      step_i += 1
     self.terminate()
 
   def terminate(self):
