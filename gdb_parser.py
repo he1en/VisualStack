@@ -23,12 +23,14 @@ class GDBParser:
     self._new_function = True
     self._new_frame_loaded = True
 
-    self._line_instruction_limits = None
-
     self.stackshot = stackshot.StackShot()
     
     self.dummy_start_output = 'DUMMY START'
     self.step_command = 'stepi'
+
+  @property
+  def new_line(self):
+    return self._new_line
 
   def get_stackshot(self):
     return self.stackshot
