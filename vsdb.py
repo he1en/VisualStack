@@ -78,43 +78,6 @@ def getNextStep(curr_step, curr_step_i, transition):
       next_step_i += 1
   return next_step, next_step_i
 
-# determines step and step_i based on transition
-"""def getNextStep(curr_step, curr_step_i, transition):
-  next_step = curr_step
-  next_step_i = curr_step_i
-  if transition == 'step_back':
-    next_step -= 1
-    if next_step >= 0:
-      next_step_i = getLastStepIInStep(next_step)
-    else:
-      next_step = 0
-      next_step_i = 0
-  elif transition == 'stepi_back':
-    next_step_i -= 1
-    if next_step_i < 0:
-      if next_step == 0:
-        next_step_i = 0
-      else:
-        next_step -= 1
-        next_step_i = getLastStepIInStep(next_step)
-  elif transition == 'step_forward':
-    curr_last_step_i = getLastStepIInStep(next_step)
-    if next_step_i == curr_last_step_i:
-      if stepExists(next_step + 1):
-        next_step += 1
-        next_step_i = getLastStepIInStep(next_step)
-    else:
-      next_step_i = curr_last_step_i
-  elif transition == 'stepi_forward':
-    curr_last_step_i = getLastStepIInStep(next_step)
-    if next_step_i == curr_last_step_i:
-      if stepExists(next_step + 1):
-        next_step += 1
-        next_step_i = 0
-    else:
-      next_step_i += 1
-  return next_step, next_step_i"""
-
 # returns a hydrated version of the StackShot for the input step
 def getContentsForStep(step, step_i, step_direction = None):
   input_vars = {'stepNum': step, 'stepINum': step_i}
