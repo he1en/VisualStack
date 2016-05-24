@@ -23,51 +23,54 @@
 
 <div class="main-container row">
   {% if stack %}
-  <div class="code-container col-md-4">
-    <h4 class="section-header">Code</h4>
+    <div class="code-container col-md-4">
+      <h4 class="section-header">Code</h4>
+      <div class="code-typeset">
+        {% if localcode %}
+          {% for line in localcode %}
+            {% if stack.line_num == line.split()[0]|int %}
+              <b>{{ line }}</b>
 
-    {% if localcode %}
-      {% for line in localcode %}
-        {% if stack.line_num == line.split()[0]|int %}
-          <b>{{ line }}</b>
-
-	  <div class="assembly-container">
-            {% for i in range(stack.instruction_lines|length) %}
-              <div>
-	      {% if stack.curr_instruction_index == i %}
-                <b>{{ stack.instruction_lines[i] }}</b>
-	      {% else %}
-                {{ stack.instruction_lines[i] }}
-	      {% endif %}
+       	      <div class="assembly-container">
+                {% for i in range(stack.instruction_lines|length) %}
+                  <div>
+	            {% if stack.curr_instruction_index == i %}
+                      <b>{{ stack.instruction_lines[i] }}</b>
+	            {% else %}
+                      {{ stack.instruction_lines[i] }}
+	            {% endif %}
+                  </div>
+                {% endfor %}
               </div>
-             {% endfor %}
-          </div>
-        {% else %}
-          <span>{{ line }}</span><br>
-        {% endif %}
-      {% endfor %}
-    {% endif %}
- </div>
-
-  <div class="registers-container col-md-2">
-    <h4 class="section-header">Registers</h4>
-    <table class="table table-condensed">
-      {% for regname in stack.ordered_regs %}
-        <tr>
-          <td> {{ regname }} </td>
-          <td>
-	    {% if regname in stack.changed_regs %}
-            <b>{{ stack.regs[regname] }}</b>
             {% else %}
-            {{ stack.regs[regname] }}
+              <span>{{ line }}</span><br>
             {% endif %}
-	  </td>
-	</tr>
-      {% endfor %}
-    </table>
+          {% endfor %}
+        {% endif %}
+      </div>
+    </div>
+
+  <div class="registers-container col-md-3">
+    <h4 class="section-header">Registers</h4>
+    <div class="code-typeset">
+      <table class="table table-condensed">
+        {% for regname in stack.ordered_regs %}
+          <tr>
+            <td> {{ regname }} </td>
+            <td>
+	      {% if regname in stack.changed_regs %}
+                <b>{{ stack.regs[regname] }}</b>
+              {% else %}
+                {{ stack.regs[regname] }}
+              {% endif %}
+	    </td>
+	  </tr>
+        {% endfor %}
+      </table>
+    </div>
   </div>
 
-  <div class="stack-container col-md-6">
+  <div class="stack-container col-md-5">
     <h4 class="section-header">Stack</h4>
     <table class="fixed_headers">
       <thead>
@@ -82,19 +85,19 @@
 	  <tr>
 	    {% if k|hex_to_int > stack.highest_arg_addr|hex_to_int %} 
 	      <td bgcolor=#d9d9d9>{{ k }}</td>
-	      <td bgcolor=#d9d9d9>{{ stack.words[k] }}</td>
+	      <td class="code-typeset" bgcolor=#d9d9d9>{{ stack.words[k] }}</td>
 	    {% elif k|hex_to_int < stack.regs['rsp']|hex_to_int and k in stack.changed_words %}
 	      <td bgcolor=#ff6666><b>{{ k }}</b></td>
-	      <td bgcolor=#ff6666><b>{{ stack.words[k] }}</b></td>
+	      <td class="code-typeset" bgcolor=#ff6666><b>{{ stack.words[k] }}</b></td>
 	    {% elif k|hex_to_int < stack.regs['rsp']|hex_to_int %}
 	      <td bgcolor=#ff6666>{{ k }}</td>
-	      <td bgcolor=#ff6666>{{ stack.words[k] }}</td>
+	      <td class="code-typeset" bgcolor=#ff6666>{{ stack.words[k] }}</td>
 	    {% elif k in stack.changed_words %}
 	      <td><b>{{ k }}</b></td>
-	      <td><b>{{ stack.words[k] }}</b></td>
+	      <td class="code-typeset"><b>{{ stack.words[k] }}</b></td>
 	    {% else %}
 	      <td>{{ k }}</td>
-	      <td>{{ stack.words[k] }}</td>
+	      <td class="code-typeset">{{ stack.words[k] }}</td>
 	    {% endif %}
 	    {% for arg in stack.args %}
 	      {% if arg.address|hex_to_int >= k|hex_to_int and (arg.address|hex_to_int - 8) < k|hex_to_int %}
