@@ -79,25 +79,28 @@ class GDBRunner:
 
     for command in self.parser.run_commands():
       self.send(command)
-
     for command in self.parser.setup_output_commands():
       self.send(command)
+    self.capture_stack()
 
     vsdb.setStep(self.step_num, self.step_i)
     vsdb.runnerStep(self.step_num, self.step_i, self.parser.get_stackshot())
     self.step_i += 1
+
+  def capture_stack(self):
+    for command in self.parser.get_context_commands():
+      self.send(command)
+    for command in self.parser.examine_commands():
+        self.send(command)
 
   def next(self):
     if not self.running:
       return None
    
     self.send(self.parser.step_command)
-    for command in self.parser.get_context_commands():
-      self.send(command)
-    for command in self.parser.examine_commands():
-        self.send(command)
+    self.capture_stack()
 
-    if parser.new_line:
+    if self.parser.new_line:
       self.step_num += 1
       self.step_i = 0
 
