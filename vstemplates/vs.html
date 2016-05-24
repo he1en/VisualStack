@@ -7,9 +7,15 @@
 
   <form method="POST" action="visualstack" class="header-button-form">
     <div class="form-group">
-    <input type="submit" name="start_over" value="Start Over" class="btn btn-primary" />
-    <input type="submit" name="step_back" value="Step Back" class="btn btn-primary" />
+    <input type="submit" name="start_over" value="Start Over"
+           class="btn btn-primary" />
+    <input type="submit" name="step_back" value="Step Back"
+           class="btn btn-primary" />
     <input type="submit" name="step_forward"value="Step Forward"
+           class="btn btn-primary" />
+    <input type="submit" name="stepi_back"value="Step Instruction Back"
+           class="btn btn-primary" />
+    <input type="submit" name="stepi_forward"value="Step Instruction Forward"
            class="btn btn-primary" />
     </div>
   </form>
@@ -63,42 +69,46 @@
 
   <div class="stack-container col-md-6">
     <h4 class="section-header">Stack</h4>
-    <table style="width:100%">
-      <tr>
-        <td width="33.3%">Address</td>
-        <td width="33.3%">Memory Contents</td>
-        <td width="33.3"><b>Arguments</b> and Local Variables</td>
-     </tr>
-    {% for k in stack.ordered_addresses %}
-      <tr>
-        {% if k|string > stack.highest_arg_addr|string %} 
-          <td bgcolor=#d9d9d9>{{ k }}</td>
-          <td bgcolor=#d9d9d9>{{ stack.words[k] }}</td>
-        {% elif k|string < stack.regs['rsp']|string and stack.is_changed_word(k) %}
-          <td bgcolor=#ff6666><b>{{ k }}</b></td>
-          <td bgcolor=#ff6666><b>{{ stack.words[k] }}</b></td>
-        {% elif k|string < stack.regs['rsp']|string %}
-          <td bgcolor=#ff6666>{{ k }}</td>
-          <td bgcolor=#ff6666>{{ stack.words[k] }}</td>
-        {% elif k in stack.changed_words %}
-          <td><b>{{ k }}</b></td>
-          <td><b>{{ stack.words[k] }}</b></td>
-        {% else %}
-          <td>{{ k }}</td>
-          <td>{{ stack.words[k] }}</td>
-        {% endif %}
-        {% for arg in stack.args %}
-          {% if arg.address|string == k|string %}
-            <td><b>&#60;&#45;&#45; {{ arg.name }} &#61; {{ arg.value }}</b></td>
-          {% endif %}
-        {% endfor %}
-        {% for var in stack.local_vars %}
-          {% if var.address|string == k|string %}
-            <td>&#60;&#45;&#45; {{ var.name }} &#61; {{ var.value }}</td>
-          {% endif %}
-        {% endfor %}
-      </tr>
-    {% endfor %}
+    <table class="fixed_headers">
+      <thead>
+        <tr>
+          <th>Address</td>
+          <th>Memory Contents</td>
+          <th><b>Args</b> and Vars</td>
+        </tr>
+      </thead>
+      <tbody>
+	{% for k in stack.ordered_addresses %}
+	  <tr>
+	    {% if k|hex_to_int > stack.highest_arg_addr|hex_to_int %} 
+	      <td bgcolor=#d9d9d9>{{ k }}</td>
+	      <td bgcolor=#d9d9d9>{{ stack.words[k] }}</td>
+	    {% elif k|hex_to_int < stack.regs['rsp']|hex_to_int and stack.is_changed_word(k) %}
+	      <td bgcolor=#ff6666><b>{{ k }}</b></td>
+	      <td bgcolor=#ff6666><b>{{ stack.words[k] }}</b></td>
+	    {% elif k|hex_to_int < stack.regs['rsp']|hex_to_int %}
+	      <td bgcolor=#ff6666>{{ k }}</td>
+	      <td bgcolor=#ff6666>{{ stack.words[k] }}</td>
+	    {% elif k in stack.is_changed_word(k) %}
+	      <td><b>{{ k }}</b></td>
+	      <td><b>{{ stack.words[k] }}</b></td>
+	    {% else %}
+	      <td>{{ k }}</td>
+	      <td>{{ stack.words[k] }}</td>
+	    {% endif %}
+	    {% for arg in stack.args %}
+	      {% if arg.address|hex_to_int >= k|hex_to_int and (arg.address|hex_to_int - 8) < k|hex_to_int %}
+		<td><b>&#60;&#45;&#45; {{ arg.name }} &#61; {{ arg.value }}</b></td>
+	      {% endif %}
+	    {% endfor %}
+	    {% for var in stack.local_vars %}
+	      {% if var.address|hex_to_int >= k|hex_to_int and (var.address|hex_to_int - 8) < k|hex_to_int %}
+		<td>&#60;&#45;&#45; {{ var.name }} &#61; {{ var.value }}</td>
+	      {% endif %}
+	    {% endfor %}
+	  </tr>
+	{% endfor %}
+      </tbody>
     </table>
   </div>
 

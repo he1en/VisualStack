@@ -45,22 +45,35 @@ class StackShot(object):
     self._curr_instruction_index = 0
 
   # invoke on a new stackshot instance
-  def hydrate_from_db(self, stackframe, stackwords, registers, local_vars,\
-                      arguments, assembly):
+  def hydrate_from_db(self, stackframe, stackwords, registers, local_vars, arguments, assembly, step_direction):
+    step_ = stackframe[0].StepNum
+    stepi_ = stackframe[0].StepINum
     self._line = stackframe[0].LineContents
     self._line_num = stackframe[0].LineNum
-    self._curr_instruction_index = stackframe[0].InstrIndex
+    self._curr_instruction_index = stepi_
     self._highest_arg_addr = stackframe[0].HighestArgAddr
 
     for i in xrange(len(registers)):
       self._regs[registers[i].RegName] = registers[i].RegContents
-      if registers[i].StepNum == stackframe[0].StepNum:
-        self._changed_regs.add(registers[i].RegName)
+      reg_s = registers[i].StepNum
+      reg_si = registers[i].StepINum
+      if step_direction is not None and  "i_" in step_direction: # stepi_forward or stepi_back
+        if reg_s == step_ and reg_si == stepi_:
+          self._changed_regs.add(registers[i].RegName)
+      else:
+        if (reg_s == step_-1 and reg_si != 0) or (reg_s == step_ and reg_si == stepi_):
+          self._changed_regs.add(registers[i].RegName)
 
     for i in xrange(len(stackwords)):
       self._words[stackwords[i].MemAddr] = stackwords[i].MemContents
-      if stackwords[i].StepNum == stackframe[0].StepNum:
-        self._changed_words.add(stackwords[i].MemAddr)
+      sw_s = stackwords[i].StepNum
+      sw_si = stackwords[i].StepINum
+      if step_direction is not None and "i_" in step_direction:
+        if sw_s == step_ and sw_si == stepi_:
+          self._changed_words.add(stackwords[i].MemAddr)
+      else:
+        if (sw_s == step_-1 and sw_si != 0) or (sw_s == step_ and sw_si == stepi_):
+          self._changed_words.add(stackwords[i].MemAddr)
     self._ordered_addresses = sorted(self._words.keys(),
                                     key = lambda addr: int(addr, 16),
                                     reverse=True)

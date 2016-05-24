@@ -45,7 +45,8 @@ class GDBRunner:
     self.collector.start()
     self.collect_output(self.parser.dummy_start_output)
     
-    self.step = 0
+    self.step_num = 0
+    self.step_i = 0
 
   def save_code(self):
     vsdb.writeCode(self.code_lines)
@@ -82,9 +83,9 @@ class GDBRunner:
     for command in self.parser.setup_output_commands():
       self.send(command)
 
-    vsdb.setStep(self.step)
-    vsdb.runnerStep(self.step, self.parser.get_stackshot())
-    self.step += 1
+    vsdb.setStep(self.step_num, self.step_i)
+    vsdb.runnerStep(self.step_num, self.step_i, self.parser.get_stackshot())
+    self.step_i += 1
 
   def next(self):
     if not self.running:
@@ -96,13 +97,18 @@ class GDBRunner:
     for command in self.parser.examine_commands():
         self.send(command)
 
-    vsdb.runnerStep(self.step, self.parser.get_stackshot())
-    self.step += 1
+    if parser.new_line:
+      self.step_num += 1
+      self.step_i = 0
+
+    vsdb.runnerStep(self.step_num, self.step_i, self.parser.get_stackshot())
+    self.step_i += 1
 
   def run_to_completion(self):
     ''' To be called AFTER start. '''
     while self.running:
       self.next()
+
     self.terminate()
 
   def terminate(self):
