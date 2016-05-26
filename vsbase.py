@@ -43,6 +43,7 @@ class visual_stack:
     # for vsdb, get current step
     curr_stack = None
     local_code = None
+    local_assembly = None
     t = vsdb.transaction()
     try:
       currStep, currStepI = vsdb.getCurrStep()
@@ -70,6 +71,7 @@ class visual_stack:
     # for vsdb, get current step, increment stepper in correct direction, get output
     curr_stack = None
     local_code = None
+    local_assembly = None
     t = vsdb.transaction()
     currStep = 0
     currStepI = 0

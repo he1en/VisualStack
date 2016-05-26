@@ -172,8 +172,10 @@ def addStep(step_num, step_i_num, contents):
 # adds corresponding assembly for line in currstep to db
 def writeAssembly(assembly_info_obj):
   for line_num in assembly_info_obj.keys():
+    print "writing assmembly for line ", line_num
     instructions = assembly_info_obj[line_num]
     for instr_addr in instructions.keys():
+      print "about to add ", instr_addr
       query_string = \
         'insert into Assembly values($lineNum, $memAddr, $instrContents)'
       input_vars = {

@@ -51,7 +51,7 @@ class StackShot(object):
     stepi_ = stackframe[0].StepINum
     self._line = stackframe[0].LineContents
     self._line_num = stackframe[0].LineNum
-    self._curr_instr_addr = stackframe[0].curr_instr_addr
+    self._curr_instr_addr = stackframe[0].MemAddr
     self._highest_arg_addr = stackframe[0].HighestArgAddr
 
     for i in xrange(len(registers)):
@@ -80,11 +80,11 @@ class StackShot(object):
                                     reverse=True)
 
     for i in xrange(len(local_vars)):
-      self._local_vars.append(self._Var(local_vars[i].VarName,
+      self._local_vars.append(self.Var(local_vars[i].VarName,
                                       local_vars[i].VarValue,
                                       local_vars[i].VarAddr))
     for i in xrange(len(arguments)):
-      self._args.append(self._Var(arguments[i].ArgName,
+      self._args.append(self.Var(arguments[i].ArgName,
                                 arguments[i].ArgValue,
                                 arguments[i].ArgAddr))
 
@@ -177,6 +177,10 @@ class StackShot(object):
   def regs(self):
     return self._regs
 
+  @property
+  def ordered_regs(self):
+    return self._ordered_regs
+
   def set_register(self, register, value):
     self._regs[register] = value
     self._changed_regs.add(register)
@@ -187,6 +191,10 @@ class StackShot(object):
   @property
   def words(self):
     return self._words
+
+  @property
+  def ordered_addresses(self):
+    return self._ordered_addresses
 
   def set_word(self, address, word):
     self._words[address] = word

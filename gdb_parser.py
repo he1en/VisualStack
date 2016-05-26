@@ -21,7 +21,8 @@ class GDBParser:
   def __init__(self):
     self._new_line = True
     self._new_function = True
-    self._new_frame_loaded = True
+    self._new_frame_loading = True
+    self._new_frame_loaded = False
     self._fn_instructions = {} # line_num -> {addr -> instruction}
 
     self.stackshot = stackshot.StackShot()
@@ -70,7 +71,7 @@ class GDBParser:
      commands.append('disassemble /m %s' % self.stackshot.current_fn_name())
 
    # new function or first line of new function
-   if self._new_function or self._new_frame_loaded:
+   if self._new_frame_loading or self._new_frame_loaded:
       commands.append('info args')
       
    commands.append('info locals')
@@ -176,6 +177,7 @@ class GDBParser:
       ''' Stepped into new function '''
       self._new_function = True
       self._new_line = True
+      self._new_frame_loading = True
       self._new_frame_loaded = False
       self.stackshot.clear_args()
       self.stackshot.clear_locals()
@@ -190,6 +192,7 @@ class GDBParser:
       ''' Stepped into new line '''
       self._new_line = True
       if self._new_function:
+        self._new_frame_loading = False
         self._new_frame_loaded = True
         self._new_function = False
       line_num, line = line_info.split('\t')
@@ -200,6 +203,7 @@ class GDBParser:
       ''' Stepped into new assembly instruction in same line '''
       self._new_line = False
       self._new_frame_loaded = False
+      self._new_function = False
       _, line_num, line = line_info.split('\t')
       self.stackshot.line = line.strip()
       self.stackshot.line_num = int(line_num.strip())
