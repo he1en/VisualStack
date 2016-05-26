@@ -103,6 +103,9 @@ class GDBRunner:
     if self.parser.new_line:
       self.step_num += 1
       self.step_i = 0
+    
+    if self.parser.first_time_new_function():
+      vsdb.writeAssembly(self.parser.fn_instructions)
 
     vsdb.runnerStep(self.step_num, self.step_i, self.parser.get_stackshot())
     self.step_i += 1

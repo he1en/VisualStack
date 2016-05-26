@@ -50,12 +50,16 @@ class visual_stack:
       if contents is not None:
         curr_stack = contents
         local_code = vsdb.getLocalCode(contents.line_num, currStep, currStepI)
+        local_assembly = vsdb.getLocalAssembly(constents.line_num, contents.curr_instr_addr)
     except Exception as e:
       t.rollback()
       print str(e)
     else:
       t.commit()
-    return render_template('vs.html', stack = curr_stack, localcode = local_code)
+    return render_template('vs.html',
+                           stack = curr_stack,
+                           localcode = local_code,
+                           localassembly = local_assembly)
   def POST(self):
     post_params = web.input()
     step_direction = None
@@ -80,13 +84,17 @@ class visual_stack:
         vsdb.setStep(nextStep, nextStepI)
       if contents is not None:
         curr_stack = contents
-        local_code = vsdb.getLocalCode(contents.line_num, currStep, currStepI)
+        local_code = vsdb.getLocalCode(contents.line_num, currStep,currStepI)
+        local_assembly = vsdb.getLocalAssembly(constents.line_num, contents.curr_instr_addr)
     except Exception as e:
       t.rollback()
       print str(e)
     else:
       t.commit()
-    return render_template('vs.html', stack = curr_stack, localcode = local_code)
+    return render_template('vs.html',
+                           stack = curr_stack,
+                           localcode = local_code,
+                           localassembly = local_assembly)
 
 if __name__ == '__main__':
     if len(sys.argv) != 3:

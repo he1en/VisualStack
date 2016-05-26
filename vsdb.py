@@ -86,7 +86,6 @@ def getContentsForStep(step, step_i, step_direction = None):
   query_string3 = 'select * from RegistersDelta where StepNum < $stepNum or (StepNum = $stepNum and StepINum <= $stepINum) group by RegName'
   query_string4 = 'select * from LocalVars where StepNum = $stepNum and StepINum = $stepINum'
   query_string5 = 'select * from FnArguments where StepNum = $stepNum and StepINum = $stepINum'
-  query_string6 = 'select * from Assembly where StepNum = $stepNum order by StepINum asc'
 
   result1 = query(query_string1, input_vars)
   if result1 is None or len(result1) == 0:
@@ -95,11 +94,16 @@ def getContentsForStep(step, step_i, step_direction = None):
   result3 = query(query_string3, input_vars)
   result4 = query(query_string4, input_vars)
   result5 = query(query_string5, input_vars)
-  result6 = query(query_string6, input_vars)
 
   ss = stackshot.StackShot()
-  ss.hydrate_from_db(result1, result2, result3, result4, result5, result6, step_direction)
+  ss.hydrate_from_db(result1, result2, result3, result4, result5, step_direction)
   return ss
+
+# returns local assembly instructions
+def getLocalAssembly(line_num, mem_addr):
+    query_string = 'select * from Assembly where LineNum = $lineNum order by MemAddr asc'
+    input_vars = {'lineNum': line_num}
+    return query(query_string6, input_vars)
 
 # returns list starting 2 lines before and ending 2 lines after the line number passed in
 def getLocalCode(line_num, step_num, step_i_num):
@@ -120,7 +124,6 @@ def writeCode(code_lines):
     input_vars['linenum'+str(i+1)] = i
     input_vars['line'+str(i+1)] = code_lines[i]
   query_list[-1] = ';'
-  #print ''.join(query_list)
   return querySuccess(''.join(query_list), input_vars)
 
 # sets the curr step in db to be the input
@@ -131,13 +134,15 @@ def setStep(curr_step, curr_step_i):
 # never invoked by clients of this module
 # adds input contents (StackShot) into the db for the input step_num
 def addStep(step_num, step_i_num, contents):
-  query_string = 'insert into StackFrame values($stepNum, $stepINum, $linenum, $line, $highestArgAddr)'
+  query_string = 'insert into StackFrame values($stepNum, $stepINum, $linenum, $line, $highestArgAddr, $memAddr)'
+
   input_vars = {}
   input_vars['stepNum'] = step_num
   input_vars['stepINum'] = step_i_num
   input_vars['linenum'] = contents.line_num
   input_vars['line'] = contents.line
   input_vars['highestArgAddr'] = contents.highest_arg_addr
+  input_vars['memAddr'] = contents.curr_instr_addr
   db.query(query_string, input_vars)
 
   for rname, rcontents in contents.regs.iteritems():
@@ -164,13 +169,20 @@ def addStep(step_num, step_i_num, contents):
     input_vars = {'stepNum': step_num, 'stepINum': step_i_num, 'argName': arg.name, 'argValue': arg.value, 'argAddr': arg.address}
     db.query(query_string, input_vars)
 
-# never invoked by clients of this module
 # adds corresponding assembly for line in currstep to db
-def addAssembly(step_num, step_i_num, assembly_line):
-  query_string = 'insert into Assembly values($stepNum, $stepINum, $instrContents)'
-  input_vars = {'stepNum': step_num, 'stepINum': step_i_num, 'instrContents': assembly_line}
-  querySuccess(query_string, input_vars)
-
+def writeAssembly(assembly_info_obj):
+  for line_num in assembly_info_obj.keys():
+    instructions = assembly_info_obj[line_num]
+    for instr_addr in instructions.keys():
+      query_string = \
+        'insert into Assembly values($lineNum, $memAddr, $instrContents)'
+      input_vars = {
+        'lineNum': line_num,
+        'memAddr': instr_addr,
+        'instrContents': instructions[instr_addr]
+      }
+      db.query(query_string, input_vars)
+      
 def runnerStep(step, step_i, contents):
   t = transaction()
   try:
@@ -180,7 +192,6 @@ def runnerStep(step, step_i, contents):
     print str(e)
   else:
     t.commit()
-  addAssembly(step, step_i, contents.instruction_lines[contents.curr_instruction_index])
 
 # wrapper method around web.py's db.query method
 # check out http://webpy.org/cookbook/query for more info

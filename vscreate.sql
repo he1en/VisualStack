@@ -9,8 +9,8 @@ DROP TABLE if exists CurrStep;
 
 
 CREATE TABLE Code(LineNum INT PRIMARY KEY, LineContents TEXT);
-CREATE TABLE StackFrame(StepNum INT, StepINum INT, LineNum REFERENCES Code(LineNum), LineContents TEXT, HighestArgAddr TEXT, UNIQUE(StepNum, StepINum));
-CREATE TABLE Assembly(StepNum INT, StepINum INT, InstrContents TEXT, FOREIGN KEY(StepNum, StepINum) REFERENCES StackFrame(StepNum, StepINum));
+CREATE TABLE StackFrame(StepNum INT, StepINum INT, MemAddr TEXT REFERENCES Assembly(MemAddr), LineNum REFERENCES Code(LineNum), LineContents TEXT, HighestArgAddr TEXT, UNIQUE(StepNum, StepINum));
+CREATE TABLE Assembly(LineNum INT REFERENCES Code(LineNum), MemAddr TEXT, InstrContents TEXT, UNIQUE(MemAddr));
 CREATE TABLE StackWordsDelta(StepNum INT, StepINum INT, MemAddr TEXT, MemContents TEXT, FOREIGN KEY(StepNum, StepINum) REFERENCES StackFrame(StepNum, StepINum));
 CREATE TABLE RegistersDelta(StepNum INT, StepINum INT, RegName TEXT, RegContents TEXT, FOREIGN KEY(StepNum, StepINum) REFERENCES StackFrame(StepNum, StepINum));
 CREATE TABLE LocalVars(StepNum INT, StepINum INT, VarName TEXT, VarValue TEXT, VarAddr TEXT, FOREIGN KEY(StepNum, StepINum) REFERENCES StackFrame(StepNum, StepINum));

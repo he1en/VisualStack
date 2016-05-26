@@ -22,6 +22,7 @@ class GDBParser:
     self._new_line = True
     self._new_function = True
     self._new_frame_loaded = True
+    self._fn_instructions = {} # line_num -> {addr -> instruction}
 
     self.stackshot = stackshot.StackShot()
     
@@ -31,6 +32,13 @@ class GDBParser:
   @property
   def new_line(self):
     return self._new_line
+
+  def first_time_new_function(self):
+    return self._new_function and self.stackshot.first_time_in_function()
+
+  @property
+  def fn_instructions(self):
+    return self._fn_instructions
 
   def get_stackshot(self):
     return self.stackshot
@@ -57,22 +65,20 @@ class GDBParser:
    commands = []
    commands.append('info registers')
    commands.append('x/1xg $rbp')
+
+   if self._new_function:
+     commands.append('disassemble /m %s' % self.stackshot.current_fn_name())
+
    # new function or first line of new function
    if self._new_function or self._new_frame_loaded:
       commands.append('info args')
       
-   # new line of code
-   if self._new_line:
-     commands.append('info line %s' % str(self.stackshot.line_num))
-
    commands.append('info locals')
 
    return commands
 
   def examine_commands(self):
     commands = []
-    if self._new_line:
-      commands.append('disas %s, %s' % tuple(self._line_instruction_limits))
 
     self.stackshot.clear_changed_words()
     for address in self.stackshot.frame_addresses():
@@ -96,8 +102,7 @@ class GDBParser:
       '^x/1xg \$rbp$': self.ingest_saved_rbp,
       '^info args$': self.ingest_args,
       '^info locals$': self.ingest_locals,
-      '^info line \d+$': self.ingest_line_info,
-      'disas .+, .+$': self.ingest_disas
+      'disassemble /m .+$': self.ingest_disassemble
     }
     match_commands = {
       '^x/1xg (0x[a-f\d]+)$': self.ingest_address_examine,
@@ -164,6 +169,8 @@ class GDBParser:
 
   def ingest_stepi(self, data):
     line_info = data.split('\n')[0]
+    instr_addr = re.search('=> (.+) <', data.split('\n')[-1]).group(1)
+    self.stackshot.curr_instr_addr = instr_addr
 
     if self.stackshot.main_file in data:
       ''' Stepped into new function '''
@@ -191,21 +198,26 @@ class GDBParser:
 
     else:
       ''' Stepped into new assembly instruction in same line '''
-      self.stackshot.curr_instruction_index += 1
       self._new_line = False
       self._new_frame_loaded = False
       _, line_num, line = line_info.split('\t')
       self.stackshot.line = line.strip()
       self.stackshot.line_num = int(line_num.strip())
 
-  def ingest_line_info(self, data):
-    self._line_instruction_limits = re.findall('(0x[a-f\d]+)', data)
-
-  def ingest_disas(self, data):
-    self.stackshot.clear_instruction_lines()
-    for i, instruction_info in enumerate(data.split('\n')[1:-1]):
-      instruction = instruction_info.split(':')[-1].strip()
-      self.stackshot.add_instruction_line(instruction)
+  def ingest_disassemble(self, data):
+    for line in data.split('\n')[1:-1]:
+      line = line.replace('=>', '')
+      if len(line) == 0:
+        continue
+      
+      elif line[0] != ' ':
+        line_num = int(line.split()[0])
+        self._fn_instructions[line_num] = {}
+       
+      else:
+        location, contents = line.split('>:')
+        addr = location.split('<')[0].strip()
+        self._fn_instructions[line_num][addr] = contents.strip()
 
   def ingest_var_address(self, var_name, data):
     address = data.split()[-1].strip()
@@ -230,7 +242,6 @@ class GDBParser:
           # If we're returning back to this function, all vars were
           # already set active.
           var.active = True
-
 
   def ingest_args(self, data):
     ''' set highest arg address to above the saved instruction pointer '''

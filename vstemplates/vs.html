@@ -32,16 +32,18 @@
           <b>{{ line }}</b>
 
 	  <div class="assembly-container">
-            {% for i in range(stack.instruction_lines|length) %}
-              <div>
-	      {% if stack.curr_instruction_index == i %}
-                <b>{{ stack.instruction_lines[i] }}</b>
-	      {% else %}
-                {{ stack.instruction_lines[i] }}
-	      {% endif %}
-              </div>
-             {% endfor %}
-          </div>
+            {% if localassembly %}
+	      {% for instr_info in localassembly %}
+                <div>
+	        {% if stack.curr_instr_addr == instr_info.MemAddr %}
+                  <b>{{ instr_info.InstrContents }}</b>
+	        {% else %}
+                  {{  instr_info.InstrContents }}
+	        {% endif %}
+                </div>
+               {% endfor %}
+	     {% endif %}
+	  </div>
         {% else %}
           <span>{{ line }}</span><br>
         {% endif %}

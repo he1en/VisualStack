@@ -41,16 +41,17 @@ class StackShot(object):
 
     self._fn_names = []
 
-    self._instruction_lines = []
-    self._curr_instruction_index = 0
+    self._curr_instr_addr = None
 
   # invoke on a new stackshot instance
-  def hydrate_from_db(self, stackframe, stackwords, registers, local_vars, arguments, assembly, step_direction):
+  def hydrate_from_db(self, stackframe, stackwords, registers, local_vars, \
+                      arguments, step_direction):
+
     step_ = stackframe[0].StepNum
     stepi_ = stackframe[0].StepINum
     self._line = stackframe[0].LineContents
     self._line_num = stackframe[0].LineNum
-    self._curr_instruction_index = stepi_
+    self._curr_instr_addr = stackframe[0].curr_instr_addr
     self._highest_arg_addr = stackframe[0].HighestArgAddr
 
     for i in xrange(len(registers)):
@@ -87,8 +88,6 @@ class StackShot(object):
                                 arguments[i].ArgValue,
                                 arguments[i].ArgAddr))
 
-    for i in xrange(len(assembly)):
-      self._instruction_lines.append(assembly[i].InstrContents)
 
   def stringify(self):
     # TODO: make this useful
@@ -105,10 +104,6 @@ class StackShot(object):
 
   def clear_locals(self):
     self._local_vars = []
-
-  def clear_instruction_lines(self):
-    self._instruction_lines = []
-    self._curr_instruction_index = 0
 
   def frame_addresses(self):
     ''' Collects all stack addresses in current frame in descending order. '''
@@ -248,21 +243,17 @@ class StackShot(object):
   def fn_names(self):
     return self._fn_names
 
+  def current_fn_name(self):
+    return self._fn_names[-1]
+
   def add_fn_name(self, fnname):
     self._fn_names.append(fnname)
 
   @property
-  def instruction_lines(self):
-    return self._instruction_lines
+  def curr_instr_addr(self):
+    return self._curr_instr_addr
 
-  def add_instruction_line(self, line):
-    self._instruction_lines.append(line)
-
-  @property
-  def curr_instruction_index(self):
-    return self._curr_instruction_index
-
-  @curr_instruction_index.setter
-  def curr_instruction_index(self, value):
-    self._curr_instruction_index = value
+  @curr_instr_addr.setter
+  def curr_instr_addr(self, value):
+    self._curr_instr_addr = value
 
