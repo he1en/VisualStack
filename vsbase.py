@@ -10,6 +10,8 @@ import vsdb
 import gdb_runner
 
 def hex_to_int(hexstring):
+  if hexstring == 'N/A':
+    return 0
   return int(hexstring, 16)
 
 # helper method to render a template in the templates/ directory
@@ -51,7 +53,7 @@ class visual_stack:
       if contents is not None:
         curr_stack = contents
         local_code = vsdb.getLocalCode(contents.line_num, currStep, currStepI)
-        local_assembly = vsdb.getLocalAssembly(constents.line_num, contents.curr_instr_addr)
+        local_assembly = vsdb.getLocalAssembly(contents.line_num, contents.curr_instr_addr)
     except Exception as e:
       t.rollback()
       print str(e)
@@ -86,8 +88,8 @@ class visual_stack:
         vsdb.setStep(nextStep, nextStepI)
       if contents is not None:
         curr_stack = contents
-        local_code = vsdb.getLocalCode(contents.line_num, currStep,currStepI)
-        local_assembly = vsdb.getLocalAssembly(constents.line_num, contents.curr_instr_addr)
+        local_code = vsdb.getLocalCode(contents.line_num, nextStep, nextStepI)
+        local_assembly = vsdb.getLocalAssembly(contents.line_num, contents.curr_instr_addr)
     except Exception as e:
       t.rollback()
       print str(e)

@@ -91,7 +91,7 @@
 	    {% elif k|hex_to_int < stack.regs['rsp']|hex_to_int %}
 	      <td bgcolor=#ff6666>{{ k }}</td>
 	      <td bgcolor=#ff6666>{{ stack.words[k] }}</td>
-	    {% elif k in stack.is_changed_word(k) %}
+	    {% elif stack.is_changed_word(k) %}
 	      <td><b>{{ k }}</b></td>
 	      <td><b>{{ stack.words[k] }}</b></td>
 	    {% else %}
