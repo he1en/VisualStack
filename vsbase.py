@@ -52,7 +52,7 @@ class visual_stack:
       contents = vsdb.getContentsForStep(currStep, currStepI)
       if contents is not None:
         curr_stack = contents
-        local_code = vsdb.getLocalCode(contents.line_num, currStep, currStepI)
+        local_code = vsdb.getLocalCode(contents.line_num)
         local_assembly = vsdb.getLocalAssembly(contents.line_num, contents.curr_instr_addr)
     except Exception as e:
       t.rollback()
@@ -81,7 +81,6 @@ class visual_stack:
     nextStepI = 0
     try:
       if step_direction is None:
-        print 'step_direction is None!'
         vsdb.setStep(currStep, currStepI)
         contents = vsdb.getContentsForStep(currStep, currStepI)
       else:
@@ -91,7 +90,7 @@ class visual_stack:
         contents = vsdb.getContentsForStep(nextStep, nextStepI, step_direction)
       if contents is not None:
         curr_stack = contents
-        local_code = vsdb.getLocalCode(contents.line_num, nextStep, nextStepI)
+        local_code = vsdb.getLocalCode(contents.line_num)
         local_assembly = vsdb.getLocalAssembly(contents.line_num, contents.curr_instr_addr)
     except Exception as e:
       t.rollback()

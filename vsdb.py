@@ -48,7 +48,6 @@ def stepExists(step):
 
 # determines step and step_i based on transition
 def getNextStep(curr_step, curr_step_i, transition):
-  print 'getting next step for', curr_step, curr_step_i, transition
   next_step = curr_step
   next_step_i = curr_step_i
   if transition == 'step_back':
@@ -74,37 +73,6 @@ def getNextStep(curr_step, curr_step_i, transition):
         next_step_i = 0
     else:
       next_step_i += 1
-  """if transition == 'step_back':
-    if next_step_i == 0:
-      print "1:" + str(next_step - 1)
-      if stepExists(next_step - 1):
-        next_step -= 1
-    next_step_i = 0
-  elif transition == 'stepi_back':
-    if next_step_i == 0:
-      print "2:" + str(next_step - 1)
-      if stepExists(next_step - 1):
-        next_step -= 1
-        next_step_i = getLastStepIInStep(next_step)
-    else:
-      next_step_i -= 1
-  elif transition == 'step_forward':
-    print "3:" + str(next_step + 1)
-    if stepExists(next_step + 1):
-      next_step += 1
-      next_step_i = 0
-    else:
-      next_step_i = getLastStepIInStep(next_step)
-  elif transition == 'stepi_forward':
-    curr_last_step_i = getLastStepIInStep(next_step)
-    if next_step_i == curr_last_step_i:
-      print "4:" + str(next_step + 1)
-      if stepExists(next_step + 1):
-        next_step += 1
-        next_step_i = 0
-    else:
-      next_step_i += 1"""
-  print 'next step is', next_step, next_step_i
   return next_step, next_step_i
 
 # returns a hydrated version of the StackShot for the input step
@@ -136,8 +104,8 @@ def getLocalAssembly(line_num, mem_addr):
     return [(l.MemAddr, l.InstrContents) for l in code_contents]
 
 # returns list starting 2 lines before and ending 2 lines after the line number passed in
-def getLocalCode(line_num, step_num, step_i_num):
-  if line_num is None or step_num is None or step_i_num is None:
+def getLocalCode(line_num):
+  if line_num is None:
     return None
   query_string = 'select LineContents from Code order by LineNum asc limit $start, $end'
   input_vars = {'start': str(max(line_num-3,0)), 'end': 5} 
