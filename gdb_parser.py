@@ -170,7 +170,7 @@ class GDBParser:
 
   def ingest_stepi(self, data):
     line_info = data.split('\n')[0]
-    instr_addr = re.search('=> (.+) <', data.split('\n')[-1]).group(1)
+    instr_addr = re.search('=> (.+) <.+>:', data.split('\n')[-1]).group(1)
     self.stackshot.curr_instr_addr = instr_addr
 
     if self.stackshot.main_file in data:
