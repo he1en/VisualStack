@@ -33,12 +33,12 @@
 
 	  <div class="assembly-container">
             {% if localassembly %}
-	      {% for instr_info in localassembly %}
+	      {% for mem, instrcontents in localassembly %}
                 <div>
-	        {% if stack.curr_instr_addr == instr_info.MemAddr %}
-                  <b>{{ instr_info.InstrContents }}</b>
+	        {% if stack.curr_instr_addr|hex_to_int == mem|hex_to_int %}
+                  <b>{{ instrcontents }}</b>
 	        {% else %}
-                  {{  instr_info.InstrContents }}
+                  {{  instrcontents }}
 	        {% endif %}
                 </div>
                {% endfor %}
@@ -91,7 +91,7 @@
 	    {% elif k|hex_to_int < stack.regs['rsp']|hex_to_int %}
 	      <td bgcolor=#ff6666>{{ k }}</td>
 	      <td bgcolor=#ff6666>{{ stack.words[k] }}</td>
-	    {% elif k in stack.is_changed_word(k) %}
+	    {% elif stack.is_changed_word(k) %}
 	      <td><b>{{ k }}</b></td>
 	      <td><b>{{ stack.words[k] }}</b></td>
 	    {% else %}

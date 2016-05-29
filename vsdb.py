@@ -51,26 +51,23 @@ def getNextStep(curr_step, curr_step_i, transition):
   next_step = curr_step
   next_step_i = curr_step_i
   if transition == 'step_back':
-    if next_step_i == 0:
-      if stepExists(next_step - 1):
-        next_step -= 1
+    if next_step_i == 0 and stepExists(next_step - 1):
+      next_step -= 1
     next_step_i = 0
   elif transition == 'stepi_back':
-    if next_step_i == 0:
-      if stepExists(next_step - 1):
-        next_step -= 1
-        next_step_i = getLastStepIInStep(next_step)
+    if next_step_i == 0 and stepExists(next_step - 1):
+      next_step -= 1
+      next_step_i = getLastStepIInStep(next_step)
     else:
       next_step_i -= 1
   elif transition == 'step_forward':
-    if stepExists(next_step):
+    if stepExists(next_step + 1):
       next_step += 1
       next_step_i = 0
     else:
       next_step_i = getLastStepIInStep(next_step)
   elif transition == 'stepi_forward':
-    curr_last_step_i = getLastStepIInStep(next_step)
-    if next_step_i == curr_last_step_i:
+    if next_step_i == getLastStepIInStep(next_step):
       if stepExists(next_step + 1):
         next_step += 1
         next_step_i = 0
@@ -103,11 +100,12 @@ def getContentsForStep(step, step_i, step_direction = None):
 def getLocalAssembly(line_num, mem_addr):
     query_string = 'select * from Assembly where LineNum = $lineNum order by MemAddr asc'
     input_vars = {'lineNum': line_num}
-    return query(query_string6, input_vars)
+    code_contents =  query(query_string, input_vars)
+    return [(l.MemAddr, l.InstrContents) for l in code_contents]
 
 # returns list starting 2 lines before and ending 2 lines after the line number passed in
-def getLocalCode(line_num, step_num, step_i_num):
-  if line_num is None or step_num is None or step_i_num is None:
+def getLocalCode(line_num):
+  if line_num is None:
     return None
   query_string = 'select LineContents from Code order by LineNum asc limit $start, $end'
   input_vars = {'start': str(max(line_num-3,0)), 'end': 5} 
@@ -134,15 +132,15 @@ def setStep(curr_step, curr_step_i):
 # never invoked by clients of this module
 # adds input contents (StackShot) into the db for the input step_num
 def addStep(step_num, step_i_num, contents):
-  query_string = 'insert into StackFrame values($stepNum, $stepINum, $linenum, $line, $highestArgAddr, $memAddr)'
+  query_string = 'insert into StackFrame values($stepNum, $stepINum, $linenum, $line, $memAddr, $highestArgAddr)'
 
   input_vars = {}
   input_vars['stepNum'] = step_num
   input_vars['stepINum'] = step_i_num
   input_vars['linenum'] = contents.line_num
   input_vars['line'] = contents.line
-  input_vars['highestArgAddr'] = contents.highest_arg_addr
   input_vars['memAddr'] = contents.curr_instr_addr
+  input_vars['highestArgAddr'] = contents.highest_arg_addr
   db.query(query_string, input_vars)
 
   for rname, rcontents in contents.regs.iteritems():
@@ -172,10 +170,8 @@ def addStep(step_num, step_i_num, contents):
 # adds corresponding assembly for line in currstep to db
 def writeAssembly(assembly_info_obj):
   for line_num in assembly_info_obj.keys():
-    print "writing assmembly for line ", line_num
     instructions = assembly_info_obj[line_num]
     for instr_addr in instructions.keys():
-      print "about to add ", instr_addr
       query_string = \
         'insert into Assembly values($lineNum, $memAddr, $instrContents)'
       input_vars = {

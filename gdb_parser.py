@@ -185,7 +185,7 @@ class GDBParser:
 
       self.stackshot.line = line_info.split('at')[0].strip()
       fn_data, line_data = data.replace('\n', ' ').split(self.stackshot.main_file)
-      self.stackshot.line_num = re.search(':(\d+)', line_data).group(1)
+      self.stackshot.line_num = int(re.search(':(\d+)', line_data).group(1))
       fn_name = re.search('(\w+) \(', fn_data).group(1)
       self.stackshot.add_fn_name(fn_name)
 
@@ -198,7 +198,7 @@ class GDBParser:
         self._new_function = False
       line_num, line = line_info.split('\t')
       self.stackshot.line = line.strip()
-      self.stackshot.line_num = line_num.strip()
+      self.stackshot.line_num = int(line_num.strip())
 
     else:
       ''' Stepped into new assembly instruction in same line '''

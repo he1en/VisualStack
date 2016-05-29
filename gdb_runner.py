@@ -84,8 +84,7 @@ class GDBRunner:
     self.capture_stack()
 
     vsdb.setStep(self.step_num, self.step_i)
-    vsdb.runnerStep(self.step_num, self.step_i, self.parser.get_stackshot())
-    self.step_i += 1
+    self.step_num_i = -1
 
   def capture_stack(self):
     for command in self.parser.get_context_commands():
@@ -100,10 +99,6 @@ class GDBRunner:
     self.send(self.parser.step_command)
     self.capture_stack()
 
-    if self.parser.new_line:
-      self.step_num += 1
-      self.step_i = 0
-    
     if self.parser.first_time_new_function():
       t = vsdb.transaction()
       try: 
@@ -114,8 +109,13 @@ class GDBRunner:
       else:
         t.commit()
 
+    if self.parser.new_line:
+      self.step_num += 1
+      self.step_i = 0
+    else:
+      self.step_i += 1    
+
     vsdb.runnerStep(self.step_num, self.step_i, self.parser.get_stackshot())
-    self.step_i += 1
 
   def run_to_completion(self):
     ''' To be called AFTER start. '''
