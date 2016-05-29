@@ -50,13 +50,12 @@ class GDBParser:
       if src_file != self.stackshot.main_file:
         commands.append('skip file %s' % src_file)
 
-    commands.append('display/i $pc')
-
     return commands
 
   def run_commands(self):
     return [
       'b main',
+      'display/i $pc',
       'run',
       'info source',
       'info sources'
@@ -162,11 +161,13 @@ class GDBParser:
         self.stackshot.set_register(register, contents)
 
   def ingest_run(self, data):
-    line_info = data.split('\n')[-1]
+    line_info = data.split('\n')[-3]
     line_num, line = line_info.split('\t')
     self.stackshot.line = line.strip()
     self.stackshot.line_num = int(line_num.strip())
     self.stackshot.add_fn_name('main')
+    instr_addr = re.search('=> (.+) <.+>:', data.split('\n')[-1]).group(1)
+    self.stackshot.curr_instr_addr = instr_addr
 
   def ingest_stepi(self, data):
     line_info = data.split('\n')[0]
