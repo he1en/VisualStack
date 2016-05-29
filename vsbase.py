@@ -77,15 +77,18 @@ class visual_stack:
     t = vsdb.transaction()
     currStep = 0
     currStepI = 0
+    nextStep = 0
+    nextStepI = 0
     try:
       if step_direction is None:
+        print 'step_direction is None!'
         vsdb.setStep(currStep, currStepI)
         contents = vsdb.getContentsForStep(currStep, currStepI)
       else:
         currStep, currStepI  = vsdb.getCurrStep()
         nextStep, nextStepI = vsdb.getNextStep(currStep, currStepI, step_direction)
-        contents = vsdb.getContentsForStep(nextStep, nextStepI, step_direction)
         vsdb.setStep(nextStep, nextStepI)
+        contents = vsdb.getContentsForStep(nextStep, nextStepI, step_direction)
       if contents is not None:
         curr_stack = contents
         local_code = vsdb.getLocalCode(contents.line_num, nextStep, nextStepI)

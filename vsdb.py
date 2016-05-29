@@ -48,6 +48,7 @@ def stepExists(step):
 
 # determines step and step_i based on transition
 def getNextStep(curr_step, curr_step_i, transition):
+  print 'getting next step for', curr_step, curr_step_i, transition
   next_step = curr_step
   next_step_i = curr_step_i
   if transition == 'step_back':
@@ -103,6 +104,7 @@ def getNextStep(curr_step, curr_step_i, transition):
         next_step_i = 0
     else:
       next_step_i += 1"""
+  print 'next step is', next_step, next_step_i
   return next_step, next_step_i
 
 # returns a hydrated version of the StackShot for the input step
@@ -130,7 +132,8 @@ def getContentsForStep(step, step_i, step_direction = None):
 def getLocalAssembly(line_num, mem_addr):
     query_string = 'select * from Assembly where LineNum = $lineNum order by MemAddr asc'
     input_vars = {'lineNum': line_num}
-    return query(query_string, input_vars)
+    code_contents =  query(query_string, input_vars)
+    return [(l.MemAddr, l.InstrContents) for l in code_contents]
 
 # returns list starting 2 lines before and ending 2 lines after the line number passed in
 def getLocalCode(line_num, step_num, step_i_num):

@@ -33,12 +33,12 @@
 
 	  <div class="assembly-container">
             {% if localassembly %}
-	      {% for instr_info in localassembly %}
+	      {% for mem, instrcontents in localassembly %}
                 <div>
-	        {% if stack.curr_instr_addr == instr_info.MemAddr %}
-                  <b>{{ instr_info.InstrContents }}</b>
+	        {% if stack.curr_instr_addr|hex_to_int == mem|hex_to_int %}
+                  <b>{{ instrcontents }}</b>
 	        {% else %}
-                  {{  instr_info.InstrContents }}
+                  {{  instrcontents }}
 	        {% endif %}
                 </div>
                {% endfor %}

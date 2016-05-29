@@ -85,6 +85,7 @@ class GDBRunner:
 
     vsdb.setStep(self.step_num, self.step_i)
     #self.step_num = -1
+    self.step_num_i = -1
     # vsdb.runnerStep(self.step_num, self.step_i, self.parser.get_stackshot())
 
   def capture_stack(self):
@@ -113,13 +114,13 @@ class GDBRunner:
       else:
         t.commit()
 
-    vsdb.runnerStep(self.step_num, self.step_i, self.parser.get_stackshot())
-    #self.step_i += 1
     if self.parser.new_line:
       self.step_num += 1
       self.step_i = 0
     else:
       self.step_i += 1    
+    vsdb.runnerStep(self.step_num, self.step_i, self.parser.get_stackshot())
+    #self.step_i += 1
 
 
   def run_to_completion(self):
