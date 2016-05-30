@@ -1,4 +1,4 @@
-########################################
+#######################################
 # Stack Shot Class
  
 ########################################
@@ -31,9 +31,10 @@ class StackShot(object):
     self._ordered_addresses = []
     self._changed_words = set()
 
-    self._saved_rbp = None
+    self._saved_rbps = []
     self._args = []
-    self._highest_arg_addr = None
+    self._frame_top = None
+    self._rip_addr = None
     self._local_vars = []
 
     self._main_file = None
@@ -52,7 +53,7 @@ class StackShot(object):
     self._line = stackframe[0].LineContents
     self._line_num = stackframe[0].LineNum
     self._curr_instr_addr = stackframe[0].MemAddr
-    self._highest_arg_addr = stackframe[0].HighestArgAddr
+    self._frame_top = stackframe[0].FrameTop
 
     for i in xrange(len(registers)):
       self._regs[registers[i].RegName] = registers[i].RegContents
@@ -105,39 +106,26 @@ class StackShot(object):
   def clear_locals(self):
     self._local_vars = []
 
-  def frame_addresses(self):
+  def frame_addresses(self, calling_fn_top):
     ''' Collects all stack addresses in current frame in descending order. '''
     addresses = []
-    rbp_int = int(self._regs['rbp'], 16)
+    top_int = int(calling_fn_top, 16)
     rsp_int = int(self._regs['rsp'], 16)
     redzone_int = rsp_int - REDZONE_SIZE * WORD
-    saved_rbp_int = int(self._saved_rbp, 16)
 
-    # Collect memory above base pointer until saved base pointer
-    if saved_rbp_int == 0:
-      # If saved_rbp is 0x0, we are in main.
-      num_above = 0
-    else:
-      num_above = (saved_rbp_int - rbp_int) / WORD
+    num_words = (top_int - redzone_int) / WORD
 
-    for i in range(num_above):
-      addresses.append(hex(saved_rbp_int - i * WORD))
-      
-    addresses.append(self._regs['rbp'])
-
-    # Collect memory below base pointer until bottom of red zone
-    num_below = (rbp_int - redzone_int) / WORD
-    for i in range(1, num_below + 1):
-      addresses.append(hex(rbp_int - i * WORD))
+    for i in range(num_words):
+      addresses.append(hex(top_int - i * WORD))
+    
+    print calling_fn_top, num_words, addresses
 
     return addresses
 
-  def set_arg_address(self, arg_name, address):
+  def set_arg_address(self, arg_name, address, saved_rip_addr):
     arg = filter(lambda a: a.name == arg_name, self._args)[0]
     arg.address = address
-    if int(address, 16) > int(self._highest_arg_addr, 16):
-      self._highest_arg_addr = address
-    if int(address, 16) > int(self._regs['rbp'], 16) or \
+    if int(address, 16) > int(saved_rip_addr, 16) or \
        self._fn_names[-1] == 'main':
       # arg was passed on the stack, so its value is already correct
       arg.active = True
@@ -225,12 +213,12 @@ class StackShot(object):
     return self._local_vars
 
   @property
-  def highest_arg_addr(self):
-    return self._highest_arg_addr
+  def frame_top(self):
+    return self._frame_top
 
-  @highest_arg_addr.setter
-  def highest_arg_addr(self, value):
-    self._highest_arg_addr = value
+  @frame_top.setter
+  def frame_top(self, value):
+    self._frame_top = value
 
   @property
   def main_file(self):

@@ -79,7 +79,7 @@ class GDBRunner:
 
     for command in self.parser.run_commands():
       self.send(command)
-    for command in self.parser.setup_output_commands():
+    for command in self.parser.skip_file_commands():
       self.send(command)
     self.capture_stack()
 
@@ -90,7 +90,7 @@ class GDBRunner:
     for command in self.parser.get_context_commands():
       self.send(command)
     for command in self.parser.examine_commands():
-        self.send(command)
+      self.send(command)
 
   def next(self):
     if not self.running:

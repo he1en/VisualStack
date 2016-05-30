@@ -23,7 +23,10 @@ class GDBParser:
     self._new_function = True
     self._new_frame_loading = True
     self._new_frame_loaded = False
+
     self._fn_instructions = {} # line_num -> {addr -> instruction}
+    self._saved_frame_boundaries = [] # 'stack' of frame boundaries
+    self._saved_rip_addrs = [] # 'stack' of locations of rips
 
     self.stackshot = stackshot.StackShot()
     
@@ -44,7 +47,7 @@ class GDBParser:
   def get_stackshot(self):
     return self.stackshot
 
-  def setup_output_commands(self):
+  def skip_file_commands(self):
     commands = []
     for src_file in self.stackshot.src_files:
       if src_file != self.stackshot.main_file:
@@ -64,7 +67,6 @@ class GDBParser:
   def get_context_commands(self):
    commands = []
    commands.append('info registers')
-   commands.append('x/1xg $rbp')
 
    if self._new_function:
      commands.append('disassemble /m %s' % self.stackshot.current_fn_name())
@@ -75,13 +77,27 @@ class GDBParser:
       
    commands.append('info locals')
 
+   # get new frame boundary and rip location if in new leaf function,
+   # else revert back to previous frame info
+   if self.first_time_new_function():
+     print "NEW"
+     commands.append('info frame')
+   elif self._new_function:
+     self._saved_frame_boundaries.pop()
+     self._saved_rip_addrs.pop()
+     self.stackshot.frame_top = self._saved_frame_boundaries[-1]
+
    return commands
 
   def examine_commands(self):
     commands = []
 
     self.stackshot.clear_changed_words()
-    for address in self.stackshot.frame_addresses():
+    if len(self._saved_frame_boundaries) > 1:
+      frame_top = self._saved_frame_boundaries[-2]
+    else:  # in main
+      frame_top = self._saved_frame_boundaries[-1]
+    for address in self.stackshot.frame_addresses(frame_top):
       commands.append('x/1xg %s' % address)
       
     for arg in self.stackshot.arg_names():
@@ -99,10 +115,10 @@ class GDBParser:
       '^info registers$': self.ingest_registers,
       '^info sources$': self.ingest_sources,
       '^info source$': self.ingest_main_file,
-      '^x/1xg \$rbp$': self.ingest_saved_rbp,
       '^info args$': self.ingest_args,
       '^info locals$': self.ingest_locals,
-      'disassemble /m .+$': self.ingest_disassemble
+      'disassemble /m .+$': self.ingest_disassemble,
+      '^info frame$': self.ingest_frame
     }
     match_commands = {
       '^x/1xg (0x[a-f\d]+)$': self.ingest_address_examine,
@@ -144,9 +160,6 @@ class GDBParser:
   def ingest_main_file(self, data):
     self.stackshot.main_file = \
       re.match('Current source file is (.+)\n', data).group(1)
-
-  def ingest_saved_rbp(self, data):
-    self.stackshot.saved_rbp = data.split(':')[-1].strip()
 
   def ingest_address_examine(self, address, data):
     contents = data.split(':')[-1].strip()
@@ -224,11 +237,23 @@ class GDBParser:
         addr = location.split('<')[0].strip()
         self._fn_instructions[line_num][addr] = contents.strip()
 
+  def ingest_frame(self, data):
+    frame_line = data.split('\n')[0]
+    rip_line = data.split('\n')[-1]
+
+    frame_boundary = re.search('frame at (0x[a-f0-9]+):', frame_line).group(1)
+    self._saved_frame_boundaries.append(frame_boundary)
+    print self._saved_frame_boundaries
+    self.stackshot.frame_top = frame_boundary
+
+    rip_addr = re.search('rip at (0x[a-f0-9]+)', rip_line).group(1)
+    self._saved_rip_addrs.append(rip_addr)
+
   def ingest_var_address(self, var_name, data):
     address = data.split()[-1].strip()
 
     if var_name in self.stackshot.arg_names():
-      self.stackshot.set_arg_address(var_name, address)
+      self.stackshot.set_arg_address(var_name, address, self._saved_rip_addrs[-1])
 
     if var_name in self.stackshot.local_names():
       self.stackshot.set_local_address(var_name, address)
@@ -249,8 +274,6 @@ class GDBParser:
           var.active = True
 
   def ingest_args(self, data):
-    ''' set highest arg address to above the saved instruction pointer '''
-    self.stackshot.highest_arg_addr = hex(int(self.stackshot.regs['rbp'], 16) + WORD)
     self.ingest_vars(self.stackshot.args, data)
 
   def ingest_locals(self, data):

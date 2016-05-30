@@ -89,7 +89,7 @@
     <tbody>
       {% for k in stack.ordered_addresses %}
         <tr>
-          {% if k|hex_to_int > stack.highest_arg_addr|hex_to_int %} 
+          {% if k|hex_to_int > stack.frame_top|hex_to_int %} 
 	    <td bgcolor=#d9d9d9>{{ k }}</td>
 	    <td class="code-typeset" bgcolor=#d9d9d9>{{ stack.words[k] }}</td>
 	  {% elif k|hex_to_int < stack.regs['rsp']|hex_to_int and stack.is_changed_word(k) %}
