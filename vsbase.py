@@ -10,6 +10,8 @@ import vsdb
 import gdb_runner
 
 def hex_to_int(hexstring):
+  if hexstring == 'N/A':
+    return 0
   return int(hexstring, 16)
 
 # helper method to render a template in the templates/ directory
@@ -43,19 +45,24 @@ class visual_stack:
     # for vsdb, get current step
     curr_stack = None
     local_code = None
+    local_assembly = None
     t = vsdb.transaction()
     try:
       currStep, currStepI = vsdb.getCurrStep()
       contents = vsdb.getContentsForStep(currStep, currStepI)
       if contents is not None:
         curr_stack = contents
-        local_code = vsdb.getLocalCode(contents.line_num, currStep, currStepI)
+        local_code = vsdb.getLocalCode(contents.line_num)
+        local_assembly = vsdb.getLocalAssembly(contents.line_num, contents.curr_instr_addr)
     except Exception as e:
       t.rollback()
       print str(e)
     else:
       t.commit()
-    return render_template('vs.html', stack = curr_stack, localcode = local_code)
+    return render_template('vs.html',
+                           stack = curr_stack,
+                           localcode = local_code,
+                           localassembly = local_assembly)
   def POST(self):
     post_params = web.input()
     step_direction = None
@@ -66,9 +73,12 @@ class visual_stack:
     # for vsdb, get current step, increment stepper in correct direction, get output
     curr_stack = None
     local_code = None
+    local_assembly = None
     t = vsdb.transaction()
     currStep = 0
     currStepI = 0
+    nextStep = 0
+    nextStepI = 0
     try:
       if step_direction is None:
         vsdb.setStep(currStep, currStepI)
@@ -76,17 +86,21 @@ class visual_stack:
       else:
         currStep, currStepI  = vsdb.getCurrStep()
         nextStep, nextStepI = vsdb.getNextStep(currStep, currStepI, step_direction)
-        contents = vsdb.getContentsForStep(nextStep, nextStepI, step_direction)
         vsdb.setStep(nextStep, nextStepI)
+        contents = vsdb.getContentsForStep(nextStep, nextStepI, step_direction)
       if contents is not None:
         curr_stack = contents
-        local_code = vsdb.getLocalCode(contents.line_num, currStep, currStepI)
+        local_code = vsdb.getLocalCode(contents.line_num)
+        local_assembly = vsdb.getLocalAssembly(contents.line_num, contents.curr_instr_addr)
     except Exception as e:
       t.rollback()
       print str(e)
     else:
       t.commit()
-    return render_template('vs.html', stack = curr_stack, localcode = local_code)
+    return render_template('vs.html',
+                           stack = curr_stack,
+                           localcode = local_code,
+                           localassembly = local_assembly)
 
 if __name__ == '__main__':
     if len(sys.argv) != 3:
@@ -96,6 +110,6 @@ if __name__ == '__main__':
     app = web.application(urls, globals())
     app.add_processor(web.loadhook(vsdb.enforceForeignKey))
     runner = gdb_runner.GDBRunner(sys.argv[2])
-    runner.debug()
+    runner.start()
     runner.run_to_completion()
     app.run()

@@ -22,97 +22,103 @@
 </div>
 
 <div class="main-container row">
-  {% if stack %}
-    <div class="code-container col-md-4">
-      <h4 class="section-header">Code</h4>
-      <div class="code-typeset">
+{% if stack %}
+  <div class="code-container col-md-4">
+  <h4 class="section-header">Code</h4>
+  <div class="code-typeset">
+  {% if localcode %}
+    {% for line in localcode %}
+      {% if stack.line_num == line.split()[0]|int %}
+        <b>{{ line }}</b>
         {% if localcode %}
           {% for line in localcode %}
             {% if stack.line_num == line.split()[0]|int %}
               <b>{{ line }}</b>
-
-       	      <div class="assembly-container">
-                {% for i in range(stack.instruction_lines|length) %}
+              <div class="assembly-container">
+              {% if localassembly %}
+                {% for mem, instrcontents in localassembly %}
                   <div>
-	            {% if stack.curr_instruction_index == i %}
-                      <b>{{ stack.instruction_lines[i] }}</b>
-	            {% else %}
-                      {{ stack.instruction_lines[i] }}
-	            {% endif %}
+          	  {% if stack.curr_instr_addr|hex_to_int == mem|hex_to_int %}
+                    <b>{{ instrcontents }}</b>
+          	  {% else %}
+                    {{ instrcontents }}
+                  {% endif %}
                   </div>
                 {% endfor %}
+              {% endif %}
               </div>
             {% else %}
               <span>{{ line }}</span><br>
             {% endif %}
           {% endfor %}
         {% endif %}
-      </div>
-    </div>
+      {% endif %}
+    {% endfor %}
+  {% endif %}
+  </div>
+  </div>
 
   <div class="registers-container col-md-3">
-    <h4 class="section-header">Registers</h4>
-    <div class="code-typeset">
-      <table class="table table-condensed">
-        {% for regname in stack.ordered_regs %}
-          <tr>
-            <td> {{ regname }} </td>
-            <td>
-	      {% if regname in stack.changed_regs %}
-                <b>{{ stack.regs[regname] }}</b>
-              {% else %}
-                {{ stack.regs[regname] }}
-              {% endif %}
-	    </td>
-	  </tr>
-        {% endfor %}
-      </table>
-    </div>
+  <h4 class="section-header">Registers</h4>
+  <table class="table table-condensed">
+  {% for regname in stack.ordered_regs %}
+    <tr>
+      <td> {{ regname }} </td>
+      <td>
+        {% if stack.is_changed_register(regname) %}
+          <b>{{ stack.regs[regname] }}</b>
+        {% else %}
+          {{ stack.regs[regname] }}
+        {% endif %}
+      </td>
+    </tr>
+  {% endfor %}
+  </table>
   </div>
 
   <div class="stack-container col-md-5">
-    <h4 class="section-header">Stack</h4>
-    <table class="fixed_headers">
-      <thead>
+  <h4 class="section-header">Stack</h4>
+  <table class="fixed_headers">
+    <thead>
+      <tr>
+        <th>Address</td>
+        <th>Memory Contents</td>
+        <th><b>Args</b> and Vars</td>
+      </tr>
+    </thead>
+    <tbody>
+      {% for k in stack.ordered_addresses %}
         <tr>
-          <th>Address</td>
-          <th>Memory Contents</td>
-          <th><b>Args</b> and Vars</td>
-        </tr>
-      </thead>
-      <tbody>
-	{% for k in stack.ordered_addresses %}
-	  <tr>
-	    {% if k|hex_to_int > stack.highest_arg_addr|hex_to_int %} 
-	      <td bgcolor=#d9d9d9>{{ k }}</td>
-	      <td class="code-typeset" bgcolor=#d9d9d9>{{ stack.words[k] }}</td>
-	    {% elif k|hex_to_int < stack.regs['rsp']|hex_to_int and k in stack.changed_words %}
-	      <td bgcolor=#ff6666><b>{{ k }}</b></td>
-	      <td class="code-typeset" bgcolor=#ff6666><b>{{ stack.words[k] }}</b></td>
-	    {% elif k|hex_to_int < stack.regs['rsp']|hex_to_int %}
-	      <td bgcolor=#ff6666>{{ k }}</td>
-	      <td class="code-typeset" bgcolor=#ff6666>{{ stack.words[k] }}</td>
-	    {% elif k in stack.changed_words %}
-	      <td><b>{{ k }}</b></td>
-	      <td class="code-typeset"><b>{{ stack.words[k] }}</b></td>
-	    {% else %}
-	      <td>{{ k }}</td>
-	      <td class="code-typeset">{{ stack.words[k] }}</td>
+          {% if k|hex_to_int > stack.highest_arg_addr|hex_to_int %} 
+	    <td bgcolor=#d9d9d9>{{ k }}</td>
+	    <td class="code-typeset" bgcolor=#d9d9d9>{{ stack.words[k] }}</td>
+	  {% elif k|hex_to_int < stack.regs['rsp']|hex_to_int and stack.is_changed_word(k) %}
+	    <td bgcolor=#ff6666><b>{{ k }}</b></td>
+            <td class="code-typeset" bgcolor=#ff6666><b>{{ stack.words[k] }}</b></td>
+	  {% elif k|hex_to_int < stack.regs['rsp']|hex_to_int %}
+            <td bgcolor=#ff6666>{{ k }}</td>
+	    <td class="code-typeset" bgcolor=#ff6666>{{ stack.words[k] }}</td>
+	  {% elif stack.is_changed_word(k) %}
+	    <td><b>{{ k }}</b></td>
+	    <td class="code-typeset"><b>{{ stack.words[k] }}</b></td>
+	  {% else %}
+	    <td>{{ k }}</td>
+	    <td class="code-typeset">{{ stack.words[k] }}</td>
+	  {% endif %}
+	  {% for arg in stack.args %}
+	    {% if arg.address|hex_to_int >= k|hex_to_int and (arg.address|hex_to_int - 8) < k|hex_to_int %}
+	      <td><b>&#60;&#45;&#45; {{ arg.name }} &#61; {{ arg.value }}</b></td>
 	    {% endif %}
-	    {% for arg in stack.args %}
-	      {% if arg.address|hex_to_int >= k|hex_to_int and (arg.address|hex_to_int - 8) < k|hex_to_int %}
-		<td><b>&#60;&#45;&#45; {{ arg.name }} &#61; {{ arg.value }}</b></td>
-	      {% endif %}
-	    {% endfor %}
-	    {% for var in stack.local_vars %}
-	      {% if var.address|hex_to_int >= k|hex_to_int and (var.address|hex_to_int - 8) < k|hex_to_int %}
-		<td>&#60;&#45;&#45; {{ var.name }} &#61; {{ var.value }}</td>
-	      {% endif %}
-	    {% endfor %}
-	  </tr>
-	{% endfor %}
-      </tbody>
-    </table>
+	  {% endfor %}
+	  {% for var in stack.local_vars %}
+	    {% if var.address|hex_to_int >= k|hex_to_int and (var.address|hex_to_int - 8) < k|hex_to_int %}
+	      <td>&#60;&#45;&#45; {{ var.name }} &#61; {{ var.value }}</td>
+	    {% endif %}
+	  {% endfor %}
+	</tr>
+      {% endfor %}
+    </tbody>
+  </table>
   </div>
 
 {% endif %}

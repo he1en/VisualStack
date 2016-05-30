@@ -1,9 +1,23 @@
+########################################
+# GDB Runner Class
+#
+# Usage: python gdb_runner.py <uncompiled c file>
+#
+# Compiles the c file and Starts a gdb process on its executable.
+# Repeatedly calls 'stepi' and extracts information about the stack at
+# every step, and passes the unformatted gdb output to gdb-parser.
+# Also creates an output file that is the exact gdb output as if it
+# were run on command line.
+#
+########################################
+
 import subprocess
 import multiprocessing
 import sys
 import os
 import vsdb
 import stackshot
+import gdb_parser
 
 class GDBRunner:
 
@@ -11,10 +25,11 @@ class GDBRunner:
     self.c_filename = cfilename # uncompiled .c file
     with open(self.c_filename) as f:
       self.code_lines = f.readlines()
-    self.code_lines = [str(i+1) + '\t' + self.code_lines[i] for i in xrange(len(self.code_lines))]
+    self.code_lines = \
+      [str(i+1) + '\t' + self.code_lines[i] for i in xrange(len(self.code_lines))]
     self.save_code()
 
-    self.stackshot = stackshot.StackShot()
+    self.parser = gdb_parser.GDBParser()
     self.running = False
 
     self.filename = self.c_filename.replace('.c', '') # compiled file
@@ -27,9 +42,11 @@ class GDBRunner:
     fd = self.proc.stdout.fileno()
     self.collector = multiprocessing.Process(target=self.read_gdb_output, \
                                              args=[fd])
-    self.step_command = step_command
     self.collector.start()
-    self.collect_output('initial start')
+    self.collect_output(self.parser.dummy_start_output)
+    
+    self.step_num = 0
+    self.step_i = 0
 
   def save_code(self):
     vsdb.writeCode(self.code_lines)
@@ -41,10 +58,11 @@ class GDBRunner:
       if 'program is not being run' in output:
         self.running = False
 
-    if command == self.step_command and 'exit(0)' in output:
+    if command == self.parser.step_command and 'exit(0)' in output:
       self.running = False
+
     self.output_file.write(output)
-    self.stackshot.ingest(output, command)
+    self.parser.ingest(output, command)
 
   def send(self, command):
     self.output_file.write(command + '\n')
@@ -56,70 +74,54 @@ class GDBRunner:
       content = os.read(read_fd, 1000)
       self.output_queue.put(content)
 
-  def skip_other_sources(self):
-    self.send('info source')
-    self.send('info sources')
-
-    for src_file in self.stackshot.src_files:
-      if src_file != self.stackshot.main_file:
-        self.send('skip file %s' % src_file)
-
-  def debug(self):
+  def start(self):
     self.running = True
-    vsdb.setStep(0, 0)
-    self.send('b main')
-    self.send('run')
-    self.skip_other_sources()
-    self.send('display/i $pc')
+
+    for command in self.parser.run_commands():
+      self.send(command)
+    for command in self.parser.setup_output_commands():
+      self.send(command)
     self.capture_stack()
 
+    vsdb.setStep(self.step_num, self.step_i)
+    vsdb.runnerStep(self.step_num, self.step_i, self.parser.get_stackshot())
+
   def capture_stack(self):
+    for command in self.parser.get_context_commands():
+      self.send(command)
+    for command in self.parser.examine_commands():
+        self.send(command)
+
+  def next(self):
     if not self.running:
-      return
+      return None
+   
+    self.send(self.parser.step_command)
+    self.capture_stack()
 
-    self.send('info registers')
-    self.send('x/1xg $rbp')
+    if self.parser.first_time_new_function():
+      t = vsdb.transaction()
+      try: 
+        vsdb.writeAssembly(self.parser.fn_instructions)
+      except Exception as e:
+        print str(e)
+        t.rollback()
+      else:
+        t.commit()
 
-    self.stackshot.clear_changed_words()
-    for address in self.stackshot.frame_addresses():
-      self.send('x/1xg %s' % address)
+    if self.parser.new_line:
+      self.step_num += 1
+      self.step_i = 0
+    else:
+      self.step_i += 1    
 
-    # new function or first line of new function
-    if self.stackshot.new_function or self.stackshot.new_frame_loaded:
-      self.send('info args')
-      for arg in self.stackshot.arg_names():
-        self.send('p &%s' % arg)
-
-    # new line of code
-    if self.stackshot.new_line:
-      self.send('info line %s' % str(self.stackshot.line_num))
-      self.send('disas %s, %s' % tuple(self.stackshot.line_instruction_limits))
-
-    self.send('info locals')
-    for local in self.stackshot.local_names():
-      self.send('p &%s' % local)
-
-  def step(self):
-    ''' Generator which steps once in gdb and yields a stackshot object
-        describing the new stack. '''
-    # hacky? 'run' yields first real stack
-    yield self.stackshot
-    latest_output = ''
-    while self.running:
-      self.send(self.step_command)
-      self.capture_stack()
-      yield self.stackshot
+    vsdb.runnerStep(self.step_num, self.step_i, self.parser.get_stackshot())
 
   def run_to_completion(self):
-    ''' To be called AFTER debug. '''
-    step_i = 0
-    step_full = -1
-    for output in self.step():
-      if output.new_line:
-        step_full += 1
-        step_i = 0
-      vsdb.runnerStep(step_full, step_i, output)
-      step_i += 1
+    ''' To be called AFTER start. '''
+    while self.running:
+      self.next()
+
     self.terminate()
 
   def terminate(self):
@@ -133,7 +135,7 @@ def main():
     exit(0)
 
   runner = GDBRunner(sys.argv[1])
-  runner.debug()
+  runner.start()
   runner.run_to_completion()
 
 
