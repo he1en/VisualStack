@@ -83,6 +83,7 @@ class GDBRunner:
       self.send(command)
     self.capture_stack()
 
+    vsdb.writeAssembly(self.parser.fn_instructions)
     vsdb.setStep(self.step_num, self.step_i)
     vsdb.runnerStep(self.step_num, self.step_i, self.parser.get_stackshot())
 
@@ -100,14 +101,7 @@ class GDBRunner:
     self.capture_stack()
 
     if self.parser.first_time_new_function():
-      t = vsdb.transaction()
-      try: 
-        vsdb.writeAssembly(self.parser.fn_instructions)
-      except Exception as e:
-        print str(e)
-        t.rollback()
-      else:
-        t.commit()
+      vsdb.writeAssembly(self.parser.fn_instructions)
 
     if self.parser.new_line:
       self.step_num += 1
