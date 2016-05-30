@@ -210,6 +210,7 @@ class GDBParser:
       self.stackshot.line_num = int(line_num.strip())
 
   def ingest_disassemble(self, data):
+    self._fn_instructions = {}
     for line in data.split('\n')[1:-1]:
       line = line.replace('=>', '')
       if len(line) == 0:
