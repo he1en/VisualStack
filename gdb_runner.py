@@ -84,7 +84,7 @@ class GDBRunner:
     self.capture_stack()
 
     vsdb.setStep(self.step_num, self.step_i)
-    self.step_num_i = -1
+    vsdb.runnerStep(self.step_num, self.step_i, self.parser.get_stackshot())
 
   def capture_stack(self):
     for command in self.parser.get_context_commands():
