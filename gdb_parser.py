@@ -163,7 +163,8 @@ class GDBParser:
 
   def ingest_address_examine(self, address, data):
     contents = data.split(':')[-1].strip()
-    if address not in self.stackshot.words or self.stackshot.words[address] != contents:
+    if address not in self.stackshot.words or \
+       self.stackshot.words[address] != contents:
       self.stackshot.set_word(address, contents)
 
   def ingest_registers(self, data):
@@ -197,7 +198,8 @@ class GDBParser:
       self.stackshot.clear_locals()
 
       self.stackshot.line = line_info.split('at')[0].strip()
-      fn_data, line_data = data.replace('\n', ' ').split(self.stackshot.main_file)
+      fn_data, line_data = \
+        data.replace('\n', ' ').split(self.stackshot.main_file)
       self.stackshot.line_num = int(re.search(':(\d+)', line_data).group(1))
       fn_name = re.search('(\w+) \(', fn_data).group(1)
       self.stackshot.add_fn_name(fn_name)
@@ -253,7 +255,9 @@ class GDBParser:
     address = data.split()[-1].strip()
 
     if var_name in self.stackshot.arg_names():
-      self.stackshot.set_arg_address(var_name, address, self._saved_rip_addrs[-1])
+      self.stackshot.set_arg_address(var_name,
+                                     address,
+                                     self._saved_rip_addrs[-1])
 
     if var_name in self.stackshot.local_names():
       self.stackshot.set_local_address(var_name, address)

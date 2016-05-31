@@ -59,11 +59,13 @@ class StackShot(object):
       self._regs[registers[i].RegName] = registers[i].RegContents
       reg_s = registers[i].StepNum
       reg_si = registers[i].StepINum
-      if step_direction is not None and  "i_" in step_direction: # stepi_forward or stepi_back
+      if step_direction is not None and  "i_" in step_direction:
+        # stepi_forward or stepi_back
         if reg_s == step_ and reg_si == stepi_:
           self._changed_regs.add(registers[i].RegName)
       else:
-        if (reg_s == step_-1 and reg_si != 0) or (reg_s == step_ and reg_si == stepi_):
+        if (reg_s == step_-1 and reg_si != 0) or \
+           (reg_s == step_ and reg_si == stepi_):
           self._changed_regs.add(registers[i].RegName)
 
     for i in xrange(len(stackwords)):
@@ -74,7 +76,8 @@ class StackShot(object):
         if sw_s == step_ and sw_si == stepi_:
           self._changed_words.add(stackwords[i].MemAddr)
       else:
-        if (sw_s == step_-1 and sw_si != 0) or (sw_s == step_ and sw_si == stepi_):
+        if (sw_s == step_-1 and sw_si != 0) or \
+           (sw_s == step_ and sw_si == stepi_):
           self._changed_words.add(stackwords[i].MemAddr)
     self._ordered_addresses = sorted(self._words.keys(),
                                     key = lambda addr: int(addr, 16),
