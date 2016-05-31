@@ -75,6 +75,50 @@ def getNextStep(curr_step, curr_step_i, transition):
       next_step_i += 1
   return next_step, next_step_i
 
+"""def getPredecesorsOfNextStep(curr_step, curr_step_i, transition):
+  predecessors = []
+  if transition == 'stepi_forward':
+    predecessors.append((curr_step, curr_step_i))
+  elif transition == 'step_forward':
+    prev_stepi_max = getLastStepIInStep(curr_step)
+    for stepi in xrange(prev_stepi_max):
+      predecessors.append((curr_step, stepi))
+  elif transition == 'stepi_back':
+    hop1, hop1_i = getNextStep(curr_step, curr_step_i, transition)
+    hop2, hop2_i = getNextStep(hop1, hop1_i, transition)
+    predecessors.append((hop2, hop2_i))
+  elif transition == 'step_back':
+    hop1, hop1_i = getNextStep(curr_step, curr_step_i, transition)
+    hop2, hop2_i = getNextStep(hop1, hop1_i, transition)
+    prev_stepi_max = getLastStepIInStep(hop2)
+    for stepi in xrange(prev_stepi_max):
+      predecessors.append((hop2, stepi)) 
+  return predecessors"""
+
+def getMemAddressesForAssembly(curr_step, curr_step_i, transition):
+  q = []
+  if transition == 'stepi_forward':
+    query_string = 'select MemAddr from StackFrame where StepNum = $step_num and StepINum = $stepi_num'
+    input_vars = {'step_num': curr_step, 'stepi_num': curr_step_i}
+    q = query(query_string, input_vars)
+  elif transition == 'step_forward':
+    query_string = 'select MemAddr from StackFrame where StepNum = $step_num'
+    input_vars = {'step_num': curr_step}
+    q = query(query_string, input_vars)
+  elif transition == 'stepi_back':
+    hop1, hop1_i = getNextStep(curr_step, curr_step_i, transition)
+    hop2, hop2_i = getNextStep(hop1, hop1_i, transition)
+    query_string = 'select MemAddr from StackFrame where StepNum = $step_num and StepINum = $stepi_num'
+    input_vars = {'step_num': hop2, 'stepi_num': hop2_i}
+    q = query(query_string, input_vars)
+  elif transition == 'step_back':
+    hop1, hop1_i = getNextStep(curr_step, curr_step_i, transition)
+    hop2, hop2_i = getNextStep(hop1, hop1_i, transition)
+    query_string = 'select MemAddr from StackFrame where StepNum = $step_num'
+    input_vars = {'step_num': hop2}
+    q = query(query_string, input_vars)
+  return set([int(addr.MemAddr,16) for addr in q])
+
 # returns a hydrated version of the StackShot for the input step
 def getContentsForStep(step, step_i, step_direction = None):
   input_vars = {'stepNum': step, 'stepINum': step_i}

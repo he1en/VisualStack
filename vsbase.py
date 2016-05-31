@@ -46,6 +46,7 @@ class visual_stack:
     curr_stack = None
     local_code = None
     local_assembly = None
+    predecessors = set()
     t = vsdb.transaction()
     try:
       currStep, currStepI = vsdb.getCurrStep()
@@ -62,7 +63,8 @@ class visual_stack:
     return render_template('vs.html',
                            stack = curr_stack,
                            localcode = local_code,
-                           localassembly = local_assembly)
+                           localassembly = local_assembly,
+                           predecessors = predecessors)
   def POST(self):
     post_params = web.input()
     step_direction = None
@@ -74,6 +76,7 @@ class visual_stack:
     curr_stack = None
     local_code = None
     local_assembly = None
+    predecessors = set()
     t = vsdb.transaction()
     currStep = 0
     currStepI = 0
@@ -86,6 +89,7 @@ class visual_stack:
       else:
         currStep, currStepI  = vsdb.getCurrStep()
         nextStep, nextStepI = vsdb.getNextStep(currStep, currStepI, step_direction)
+        predecessors = vsdb.getMemAddressesForAssembly(currStep, currStepI, step_direction)
         vsdb.setStep(nextStep, nextStepI)
         contents = vsdb.getContentsForStep(nextStep, nextStepI, step_direction)
       if contents is not None:
@@ -100,7 +104,8 @@ class visual_stack:
     return render_template('vs.html',
                            stack = curr_stack,
                            localcode = local_code,
-                           localassembly = local_assembly)
+                           localassembly = local_assembly,
+                           predecessors = predecessors)
 
 if __name__ == '__main__':
     if len(sys.argv) != 3:
