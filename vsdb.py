@@ -169,18 +169,25 @@ def addStep(step_num, step_i_num, contents):
 
 # adds corresponding assembly for line in currstep to db
 def writeAssembly(assembly_info_obj):
-  for line_num in assembly_info_obj.keys():
-    instructions = assembly_info_obj[line_num]
-    for instr_addr in instructions.keys():
-      query_string = \
-        'insert into Assembly values($lineNum, $memAddr, $instrContents)'
-      input_vars = {
-        'lineNum': line_num,
-        'memAddr': instr_addr,
-        'instrContents': instructions[instr_addr]
-      }
-      db.query(query_string, input_vars)
-      
+  t = transaction()
+  try:
+    for line_num in assembly_info_obj.keys():
+      instructions = assembly_info_obj[line_num]
+      for instr_addr in instructions.keys():
+        query_string = \
+          'insert into Assembly values($lineNum, $memAddr, $instrContents)'
+        input_vars = {
+          'lineNum': line_num,
+          'memAddr': instr_addr,
+          'instrContents': instructions[instr_addr]
+        }
+        db.query(query_string, input_vars)
+  except Exception as e:
+    t.rollback()
+    print str(e)
+  else:
+    t.commit()
+
 def runnerStep(step, step_i, contents):
   t = transaction()
   try:

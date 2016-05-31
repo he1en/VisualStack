@@ -30,28 +30,21 @@
     {% for line in localcode %}
       {% if stack.line_num == line.split()[0]|int %}
         <b>{{ line }}</b>
-        {% if localcode %}
-          {% for line in localcode %}
-            {% if stack.line_num == line.split()[0]|int %}
-              <b>{{ line }}</b>
-              <div class="assembly-container">
-              {% if localassembly %}
-                {% for mem, instrcontents in localassembly %}
-                  <div>
-          	  {% if stack.curr_instr_addr|hex_to_int == mem|hex_to_int %}
-                    <b>{{ instrcontents }}</b>
-          	  {% else %}
-                    {{ instrcontents }}
-                  {% endif %}
-                  </div>
-                {% endfor %}
-              {% endif %}
-              </div>
+        <div class="assembly-container">
+        {% if localassembly %}
+          {% for mem, instrcontents in localassembly %}
+            <div>
+            {% if stack.curr_instr_addr|hex_to_int == mem|hex_to_int %}
+              <b>{{ instrcontents }}</b>
             {% else %}
-              <span>{{ line }}</span><br>
+              {{ instrcontents }}
             {% endif %}
+            </div>
           {% endfor %}
         {% endif %}
+        </div>
+      {% else %}
+        <span>{{ line }}</span><br>
       {% endif %}
     {% endfor %}
   {% endif %}
