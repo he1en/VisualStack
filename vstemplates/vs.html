@@ -81,7 +81,8 @@
     </thead>
     <tbody>
       {% for k in stack.ordered_addresses
-         if k|hex_to_int <= stack.parent_frame_top|hex_to_int %}
+         if k|hex_to_int <= stack.parent_frame_top|hex_to_int and
+            k|hex_to_int >= stack.frame_bottom|hex_to_int %}
         <tr>
           {% if k|hex_to_int > stack.frame_top|hex_to_int %} 
 	    <td bgcolor=#d9d9d9>{{ k }}</td>

@@ -65,32 +65,37 @@ class GDBParser:
     ]
 
   def get_context_commands(self):
-   commands = []
-   commands.append('info registers')
+    ''' Called after gdb made a stepi '''
+    commands = []
+    commands.append('info registers')
 
-   if self._new_function:
-     commands.append('disassemble /m %s' % self.stackshot.current_fn_name())
+    if self._new_function:
+      commands.append('disassemble /m %s' % self.stackshot.current_fn_name())
 
-   # new function or first line of new function
-   if self._new_frame_loading or self._new_frame_loaded:
+    # Preparing stack for entrance into new function
+    if self._new_frame_loading or self._new_frame_loaded:
       commands.append('info args')
-      
-   commands.append('info locals')
 
-   # get new frame boundary and rip location if in new leaf function,
-   # else revert back to previous frame info
-   if self.first_time_new_function():
-     commands.append('info frame')
-   elif self._new_function:
-     self._saved_frame_boundaries.pop()
-     self._saved_rip_addrs.pop()
-     self.stackshot.frame_top = self._saved_frame_boundaries[-1]
-     self.stackshot.parent_frame_top = self._saved_frame_boundaries[-2]
+      commands.append('info locals')
 
-   return commands
+    # get new frame boundary and rip location if in new leaf function,
+    # else revert back to previous frame info
+    if self.first_time_new_function():
+      commands.append('info frame')
+    elif self._new_function:
+      # we are re-entering a calling function
+      self._saved_frame_boundaries.pop()
+      self._saved_rip_addrs.pop()
+      self.stackshot.frame_top = self._saved_frame_boundaries[-1]
+      self.stackshot.parent_frame_top = self._saved_frame_boundaries[-2]
+
+    return commands
 
   def examine_commands(self):
+    ''' Called after get_context_commands '''
     commands = []
+    
+    self.calc_frame_bottom()
 
     self.stackshot.clear_changed_words()
     for address in self.stackshot.frame_addresses():
@@ -103,6 +108,11 @@ class GDBParser:
       commands.append('p &%s' % local)
           
     return commands
+
+  def calc_frame_bottom(self):
+    rsp = self.stackshot.regs['rsp']
+    if self._new_function or rsp < self.stackshot.frame_bottom:
+      self.stackshot.frame_bottom = rsp
 
   def ingest(self, data, command):
     direct_commands = {
@@ -159,9 +169,13 @@ class GDBParser:
 
   def ingest_address_examine(self, address, data):
     contents = data.split(':')[-1].strip()
-    if address not in self.stackshot.words or \
-       self.stackshot.words[address] != contents:
+    if address not in self.stackshot.words:
       self.stackshot.set_word(address, contents)
+
+    if self.stackshot.words[address] != contents:
+      self.stackshot.set_word(address, contents)
+      if address < self.stackshot.frame_bottom:
+        self.stackshot.frame_bottom = address
 
   def ingest_registers(self, data):
     self.stackshot.clear_changed_regs()

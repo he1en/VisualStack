@@ -31,11 +31,12 @@ class StackShot(object):
     self._ordered_addresses = []
     self._changed_words = set()
 
-    self._saved_rbps = []
     self._args = []
     self._frame_top = None
     self._parent_frame_top = None
+    self._frame_bottom = None
     self._rip_addr = None
+
     self._local_vars = []
 
     self._main_file = None
@@ -56,6 +57,7 @@ class StackShot(object):
     self._curr_instr_addr = stackframe[0].MemAddr
     self._frame_top = stackframe[0].FrameTop
     self._parent_frame_top = stackframe[0].ParentFrameTop
+    self._frame_bottom = stackframe[0].FrameBottom
 
     for i in xrange(len(registers)):
       self._regs[registers[i].RegName] = registers[i].RegContents
@@ -200,14 +202,6 @@ class StackShot(object):
     return address in self._changed_words
 
   @property
-  def saved_rbp(self):
-    return self._saved_rbp
-
-  @saved_rbp.setter
-  def saved_rbp(self, value):
-    self._saved_rbp = value
-
-  @property
   def args(self):
     return self._args
 
@@ -230,6 +224,14 @@ class StackShot(object):
   @parent_frame_top.setter
   def parent_frame_top(self, value):
     self._parent_frame_top = value
+
+  @property
+  def frame_bottom(self):
+    return self._frame_bottom
+
+  @frame_bottom.setter
+  def frame_bottom(self, value):
+    self._frame_bottom = value
 
   @property
   def main_file(self):
