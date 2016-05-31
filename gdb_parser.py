@@ -80,12 +80,12 @@ class GDBParser:
    # get new frame boundary and rip location if in new leaf function,
    # else revert back to previous frame info
    if self.first_time_new_function():
-     print "NEW"
      commands.append('info frame')
    elif self._new_function:
      self._saved_frame_boundaries.pop()
      self._saved_rip_addrs.pop()
      self.stackshot.frame_top = self._saved_frame_boundaries[-1]
+     self.stackshot.parent_frame_top = self._saved_frame_boundaries[-2]
 
    return commands
 
@@ -93,11 +93,7 @@ class GDBParser:
     commands = []
 
     self.stackshot.clear_changed_words()
-    if len(self._saved_frame_boundaries) > 1:
-      frame_top = self._saved_frame_boundaries[-2]
-    else:  # in main
-      frame_top = self._saved_frame_boundaries[-1]
-    for address in self.stackshot.frame_addresses(frame_top):
+    for address in self.stackshot.frame_addresses():
       commands.append('x/1xg %s' % address)
       
     for arg in self.stackshot.arg_names():
@@ -246,7 +242,11 @@ class GDBParser:
 
     frame_boundary = re.search('frame at (0x[a-f0-9]+):', frame_line).group(1)
     self._saved_frame_boundaries.append(frame_boundary)
-    print self._saved_frame_boundaries
+    if self.stackshot.fn_names[-1] == 'main':
+      self._saved_frame_boundaries.append(frame_boundary)
+      self.stackshot.frame_top = frame_boundary
+
+    self.stackshot.parent_frame_top = self.stackshot.frame_top
     self.stackshot.frame_top = frame_boundary
 
     rip_addr = re.search('rip at (0x[a-f0-9]+)', rip_line).group(1)

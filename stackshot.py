@@ -34,6 +34,7 @@ class StackShot(object):
     self._saved_rbps = []
     self._args = []
     self._frame_top = None
+    self._parent_frame_top = None
     self._rip_addr = None
     self._local_vars = []
 
@@ -54,6 +55,7 @@ class StackShot(object):
     self._line_num = stackframe[0].LineNum
     self._curr_instr_addr = stackframe[0].MemAddr
     self._frame_top = stackframe[0].FrameTop
+    self._parent_frame_top = stackframe[0].ParentFrameTop
 
     for i in xrange(len(registers)):
       self._regs[registers[i].RegName] = registers[i].RegContents
@@ -109,10 +111,10 @@ class StackShot(object):
   def clear_locals(self):
     self._local_vars = []
 
-  def frame_addresses(self, calling_fn_top):
+  def frame_addresses(self):
     ''' Collects all stack addresses in current frame in descending order. '''
     addresses = []
-    top_int = int(calling_fn_top, 16)
+    top_int = int(self._parent_frame_top, 16)
     rsp_int = int(self._regs['rsp'], 16)
     redzone_int = rsp_int - REDZONE_SIZE * WORD
 
@@ -121,8 +123,6 @@ class StackShot(object):
     for i in range(num_words):
       addresses.append(hex(top_int - i * WORD))
     
-    print calling_fn_top, num_words, addresses
-
     return addresses
 
   def set_arg_address(self, arg_name, address, saved_rip_addr):
@@ -222,6 +222,14 @@ class StackShot(object):
   @frame_top.setter
   def frame_top(self, value):
     self._frame_top = value
+
+  @property
+  def parent_frame_top(self):
+    return self._parent_frame_top
+
+  @parent_frame_top.setter
+  def parent_frame_top(self, value):
+    self._parent_frame_top = value
 
   @property
   def main_file(self):
