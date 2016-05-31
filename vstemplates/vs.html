@@ -36,8 +36,8 @@
             <div>
             {% if stack.curr_instr_addr|hex_to_int == mem|hex_to_int %}
               <b>{{ instrcontents }}</b>
-            {% elif mem|hex_to_int in predecessors %}
-              <div class="bg-info">{{ instrcontents }}</div>
+            {% elif predecessors is not none and mem|hex_to_int in predecessors %}
+              <span class="bg-info">{{ instrcontents }}</span>
             {% else %}
               {{ instrcontents }}
             {% endif %}
@@ -45,8 +45,10 @@
           {% endfor %}
         {% endif %}
         </div>
+      {% elif predecessors is none and line.split()[0]|int == prevlinenum%}
+        <div class="bg-info">{{ line }}</div>
       {% else %}
-        <span>{{ line }}</span><br>
+        <div>{{ line }}</div><br>
       {% endif %}
     {% endfor %}
   {% endif %}

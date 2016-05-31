@@ -38,45 +38,16 @@ def render_template(template_name, **context):
     return jinja_env.get_template(template_name).render(context)
 
 urls = ('/visualstack', 'visual_stack')
-step_directions = ['step_forward', 'stepi_forward', 'step_back', 'stepi_back']
+step_directions = ['step_forward', 'stepi_forward', 'step_back', 'stepi_back', 'start_over']
 
 class visual_stack:
-  def GET(self):
-    # for vsdb, get current step
+  def assembleStack(self, step_direction=None):
     curr_stack = None
     local_code = None
     local_assembly = None
     predecessors = set()
-    t = vsdb.transaction()
-    try:
-      currStep, currStepI = vsdb.getCurrStep()
-      contents = vsdb.getContentsForStep(currStep, currStepI)
-      if contents is not None:
-        curr_stack = contents
-        local_code = vsdb.getLocalCode(contents.line_num)
-        local_assembly = vsdb.getLocalAssembly(contents.line_num, contents.curr_instr_addr)
-    except Exception as e:
-      t.rollback()
-      print str(e)
-    else:
-      t.commit()
-    return render_template('vs.html',
-                           stack = curr_stack,
-                           localcode = local_code,
-                           localassembly = local_assembly,
-                           predecessors = predecessors)
-  def POST(self):
-    post_params = web.input()
-    step_direction = None
-    for step_dir in step_directions:
-      if step_dir in post_params:
-        step_direction = step_dir
+    prev_line_num = None
 
-    # for vsdb, get current step, increment stepper in correct direction, get output
-    curr_stack = None
-    local_code = None
-    local_assembly = None
-    predecessors = set()
     t = vsdb.transaction()
     currStep = 0
     currStepI = 0
@@ -84,14 +55,22 @@ class visual_stack:
     nextStepI = 0
     try:
       if step_direction is None:
+        currStep, currStepI = vsdb.getCurrStep()
+        nextStep = currStep
+        nextStepI = currStepI
+      elif step_direction is 'start_over':
         vsdb.setStep(currStep, currStepI)
-        contents = vsdb.getContentsForStep(currStep, currStepI)
+        nextStep = currStep
+        nextStepI = currStepI
       else:
         currStep, currStepI  = vsdb.getCurrStep()
         nextStep, nextStepI = vsdb.getNextStep(currStep, currStepI, step_direction)
-        predecessors = vsdb.getMemAddressesForAssembly(currStep, currStepI, step_direction)
         vsdb.setStep(nextStep, nextStepI)
-        contents = vsdb.getContentsForStep(nextStep, nextStepI, step_direction)
+      predecessors = vsdb.getMemAddressesForAssembly(currStep, currStepI, step_direction)
+      if predecessors is None:
+        prevStep, prevStepI = vsdb.getNextStep(nextStep, nextStepI, 'step_back')
+        prev_line_num = vsdb.getLineNum(prevStep, prevStepI)
+      contents = vsdb.getContentsForStep(nextStep, nextStepI, step_direction)
       if contents is not None:
         curr_stack = contents
         local_code = vsdb.getLocalCode(contents.line_num)
@@ -101,11 +80,30 @@ class visual_stack:
       print str(e)
     else:
       t.commit()
+    return curr_stack, local_code, local_assembly, predecessors, prev_line_num
+
+  def GET(self):
+    curr_stack, local_code, local_assembly, predecessors, prev_line_num = self.assembleStack()
     return render_template('vs.html',
                            stack = curr_stack,
                            localcode = local_code,
                            localassembly = local_assembly,
-                           predecessors = predecessors)
+                           predecessors = predecessors,
+                           prevlinenum = prev_line_num)
+  def POST(self):
+    post_params = web.input()
+    step_direction = None
+    for step_dir in step_directions:
+      if step_dir in post_params:
+        step_direction = step_dir
+
+    curr_stack, local_code, local_assembly, predecessors, prev_line_num = self.assembleStack(step_direction)
+    return render_template('vs.html',
+                           stack = curr_stack,
+                           localcode = local_code,
+                           localassembly = local_assembly,
+                           predecessors = predecessors,
+                           prevlinenum = prev_line_num)
 
 if __name__ == '__main__':
     if len(sys.argv) != 3:
