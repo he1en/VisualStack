@@ -8,12 +8,17 @@
   width: 100%;
 }
 
+.panel-body {
+  height: 700px;
+}
+
 .section-header {
   padding-below: 10px;
 }
 
 .main-container {
   padding-top: 100px;
+  padding-left: 20px;
   height: 700px;
 }
 
@@ -28,7 +33,7 @@
 }
 
 .code-container {
-  padding-left: 60px;
+  padding-left: 20px;
 }
 
 .fixed_headers {
@@ -65,5 +70,5 @@
   display: block;
   overflow-y: auto;
   width: 100%;
-  height: 570px;
+  height: 500px;
 } 
