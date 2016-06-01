@@ -130,10 +130,13 @@ class StackShot(object):
   def set_arg_address(self, arg_name, address, saved_rip_addr):
     arg = filter(lambda a: a.name == arg_name, self._args)[0]
     arg.address = address
-    if int(address, 16) > int(saved_rip_addr, 16) or \
+    addr_int = int(address, 16)
+    if addr_int > int(saved_rip_addr, 16) or \
        self._fn_names[-1] == 'main':
       # arg was passed on the stack, so its value is already correct
       arg.active = True
+    if addr_int > int(self._frame_top, 16):
+      self._frame_top = hex(addr_int + 8)
 
   def arg_names(self):
     return [arg.name for arg in self._args]
