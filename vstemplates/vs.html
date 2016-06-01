@@ -100,12 +100,12 @@
 	    <td>{{ k }}</td>
 	    <td class="code-typeset">{{ stack.words[k] }}</td>
 	  {% endif %}
-	  {% for arg in stack.args %}
+	  {% for arg in stack.args if arg.address %}
 	    {% if arg.address|hex_to_int >= k|hex_to_int and (arg.address|hex_to_int - 8) < k|hex_to_int %}
 	      <td><b>&#60;&#45;&#45; {{ arg.name }} &#61; {{ arg.value }}</b></td>
 	    {% endif %}
 	  {% endfor %}
-	  {% for var in stack.local_vars %}
+	  {% for var in stack.local_vars if var.address %}
 	    {% if var.address|hex_to_int >= k|hex_to_int and (var.address|hex_to_int - 8) < k|hex_to_int %}
 	      <td>&#60;&#45;&#45; {{ var.name }} &#61; {{ var.value }}</td>
 	    {% endif %}

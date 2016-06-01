@@ -156,17 +156,23 @@ def addStep(step_num, step_i_num, contents):
       query_string = 'insert into StackWordsDelta values($stepNum, $stepINum, $addr, $mem)'
       input_vars = {'stepNum': step_num, 'stepINum': step_i_num, 'addr': addr, 'mem': w}
       db.query(query_string, input_vars)
+
   for i, var in enumerate(contents.local_vars):
     if not var.active:
       continue
-    query_string = 'insert into LocalVars values($stepNum, $stepINum, $varName, $varValue, $varAddr)'
-    input_vars = {'stepNum': step_num, 'stepINum': step_i_num, 'varName': var.name, 'varValue': var.value, 'varAddr': var.address}
+    query_string = 'insert into LocalVars values($stepNum, $stepINum, $varName, $varValue, $varAddr, $varReg)'
+    input_vars = {'stepNum': step_num, 'stepINum': step_i_num,
+                  'varName': var.name, 'varValue': var.value,
+                  'varAddr': var.address, 'varReg': var.register}
     db.query(query_string, input_vars) 
+
   for i, arg in enumerate(contents.args):
     if not arg.active:
       continue
-    query_string = 'insert into FnArguments values($stepNum, $stepINum, $argName, $argValue, $argAddr)'
-    input_vars = {'stepNum': step_num, 'stepINum': step_i_num, 'argName': arg.name, 'argValue': arg.value, 'argAddr': arg.address}
+    query_string = 'insert into FnArguments values($stepNum, $stepINum, $argName, $argValue, $argAddr, $argReg)'
+    input_vars = {'stepNum': step_num, 'stepINum': step_i_num,
+                  'argName': arg.name, 'argValue': arg.value,
+                  'argAddr': arg.address, 'argReg': arg.register}
     db.query(query_string, input_vars)
 
 # adds corresponding assembly for line in currstep to db

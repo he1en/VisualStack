@@ -13,11 +13,13 @@ WORD = 8
 class StackShot(object):
 
   class Var:
-    def __init__(self, name, value=None, address=None, active=False):
+    def __init__(self, name, value=None, address=None, register=None,
+                 active=False):
       self.name = name
       self.value = value
       self.address = address
       self.active = active
+      self.register = register
 
   def __init__(self):
     self._line = None
@@ -89,12 +91,14 @@ class StackShot(object):
 
     for i in xrange(len(local_vars)):
       self._local_vars.append(self.Var(local_vars[i].VarName,
-                                      local_vars[i].VarValue,
-                                      local_vars[i].VarAddr))
+                                       local_vars[i].VarValue,
+                                       local_vars[i].VarAddr,
+                                       local_vars[i].VarReg))
     for i in xrange(len(arguments)):
       self._args.append(self.Var(arguments[i].ArgName,
-                                arguments[i].ArgValue,
-                                arguments[i].ArgAddr))
+                                 arguments[i].ArgValue,
+                                 arguments[i].ArgAddr,
+                                 arguments[i].ArgReg))
 
 
   def stringify(self):
@@ -127,24 +131,49 @@ class StackShot(object):
     
     return addresses
 
-  def set_arg_address(self, arg_name, address, saved_rip_addr):
+  def set_var_opimized_out(self, var_name):
+    var = None
+    
+    if var_name in self.arg_names():
+      var_match = filter(lambda a: a.name == var_name, self._args)
+      if var_match:
+        var = var_match[0]
+    elif var_name in self.local_names():
+      var_match = filter(lambda l: l.name == var_name, self._local_vars)
+      if var_match:
+        var = var_match[0]
+    
+    var.value = '<optimized out>' 
+    var.active = False
+
+  def set_arg_location(self, saved_rip_addr, arg_name, address=None, register=None):
     arg = filter(lambda a: a.name == arg_name, self._args)[0]
-    arg.address = address
-    addr_int = int(address, 16)
-    if addr_int > int(saved_rip_addr, 16) or \
-       self._fn_names[-1] == 'main':
-      # arg was passed on the stack, so its value is already correct
+
+    if address:
+      arg.address = address
+      addr_int = int(address, 16)
+      if addr_int > int(saved_rip_addr, 16) or \
+         self._fn_names[-1] == 'main':
+        # arg was passed on the stack, so its value is already correct
+        arg.active = True
+        if addr_int > int(self._frame_top, 16):
+          self._frame_top = hex(addr_int + 8)
+
+    if register:
+      arg.register = register
       arg.active = True
-    if addr_int > int(self._frame_top, 16):
-      self._frame_top = hex(addr_int + 8)
 
   def arg_names(self):
     return [arg.name for arg in self._args]
 
-  def set_local_address(self, local_name, address):
+  def set_local_location(self, local_name, address=None, register=None):
     for local in self._local_vars:
       if local.name == local_name:
-        local.address = address
+        if address:
+          local.address = address
+        if register:
+          local.register = register
+          local.active = True
 
   def local_names(self):
     return [local.name for local in self._local_vars]

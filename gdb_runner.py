@@ -33,7 +33,7 @@ class GDBRunner:
     self.running = False
 
     self.filename = self.c_filename.replace('.c', '') # compiled file
-    subprocess.call(['gcc', self.c_filename, '-o', self.filename, '-g'])
+    subprocess.call(['gcc', self.c_filename, '-o', self.filename, '-Og', '-g'])
 
     self.output_file = open('output_' + self.filename, 'w')
     self.proc = subprocess.Popen(['gdb', self.filename], \
@@ -62,7 +62,7 @@ class GDBRunner:
       self.running = False
 
     self.output_file.write(output)
-    self.parser.ingest(output, command)
+    self.parser.parse(output, command)
 
   def send(self, command):
     self.output_file.write(command + '\n')
@@ -90,6 +90,9 @@ class GDBRunner:
   def capture_stack(self):
     for command in self.parser.get_context_commands():
       self.send(command)
+    if self.parser._failed:
+      self.send('finish')
+      return
     for command in self.parser.examine_commands():
       self.send(command)
 
@@ -98,7 +101,14 @@ class GDBRunner:
       return None
    
     self.send(self.parser.step_command)
+    if self.parser._failed:
+      self.send('finish')
+      return
+
     self.capture_stack()
+    if self.parser._failed:
+      self.send('finish')
+      return
 
     if self.parser.first_time_new_function():
       vsdb.writeAssembly(self.parser.fn_instructions)

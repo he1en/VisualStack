@@ -21,8 +21,6 @@ class GDBParser:
   def __init__(self):
     self._new_line = True
     self._new_function = True
-    self._new_frame_loading = True
-    self._new_frame_loaded = False
 
     self._fn_instructions = {} # line_num -> {addr -> instruction}
     self._saved_frame_boundaries = [] # 'stack' of frame boundaries
@@ -66,17 +64,17 @@ class GDBParser:
 
   def get_context_commands(self):
     ''' Called after gdb made a stepi '''
+    if self._failed:
+      return ['finish']
+
     commands = []
     commands.append('info registers')
 
     if self._new_function:
       commands.append('disassemble /m %s' % self.stackshot.current_fn_name())
 
-    # Preparing stack for entrance into new function
-    if self._new_frame_loading or self._new_frame_loaded:
-      commands.append('info args')
-
-      commands.append('info locals')
+    commands.append('info args')
+    commands.append('info locals')
 
     # get new frame boundary and rip location if in new leaf function,
     # else revert back to previous frame info
@@ -93,6 +91,9 @@ class GDBParser:
 
   def examine_commands(self):
     ''' Called after get_context_commands '''
+    if self._failed:
+      return ['finish']
+
     commands = []
     
     self.calc_frame_bottom()
@@ -101,11 +102,9 @@ class GDBParser:
     for address in self.stackshot.frame_addresses():
       commands.append('x/1xg %s' % address)
       
-    for arg in self.stackshot.arg_names():
-      commands.append('p &%s' % arg)
-        
-    for local in self.stackshot.local_names():
-      commands.append('p &%s' % local)
+    for var in self.stackshot.args + self.stackshot.local_vars:
+      if not var.value == '<optimized out>':
+        commands.append('p &%s' % var.name)
           
     return commands
 
@@ -113,6 +112,14 @@ class GDBParser:
     rsp = self.stackshot.regs['rsp']
     if self._new_function or rsp < self.stackshot.frame_bottom:
       self.stackshot.frame_bottom = rsp
+
+  def parse(self, data, command):
+    try:
+      self.ingest(data, command)
+      self._failed = False
+    except (ValueError, IndexError, AttributeError) as e:
+      print 'Error parsing command %s: %s' % (command, e)
+      self._failed = True
 
   def ingest(self, data, command):
     direct_commands = {
@@ -124,11 +131,12 @@ class GDBParser:
       '^info args$': self.ingest_args,
       '^info locals$': self.ingest_locals,
       'disassemble /m .+$': self.ingest_disassemble,
-      '^info frame$': self.ingest_frame
+      '^info frame$': self.ingest_frame,
+      '^finish$': self.ingest_finish
     }
     match_commands = {
       '^x/1xg (0x[a-f\d]+)$': self.ingest_address_examine,
-      '^p &(.+)$': self.ingest_var_address
+      '^p &(.+)$': self.ingest_var_location
     }
     no_action_commands = [
       '^%s$' % self.dummy_start_output,
@@ -160,8 +168,7 @@ class GDBParser:
     for src_file in data.split(', '):
       if 'Source files for which' in src_file:
         continue
-      if src_file[-2:] == '.c':
-        self.stackshot.add_src_file(src_file.strip())
+      self.stackshot.add_src_file(src_file.strip())
 
   def ingest_main_file(self, data):
     self.stackshot.main_file = \
@@ -193,6 +200,24 @@ class GDBParser:
     instr_addr = re.search('=> (.+) <.+>:', data.split('\n')[-1]).group(1)
     self.stackshot.curr_instr_addr = instr_addr
 
+  def ingest_finish(self, data):
+    info = data.split('\n')[-1]
+    instr_addr = re.search('=> (.+) <.+>:', info).group(1)
+    self.stackshot.curr_instr_addr = instr_addr
+
+    self._new_function = True
+    self._new_line = True
+    self.stackshot.clear_args()
+    self.stackshot.clear_locals()
+    
+    line_info = data.split('\n')[-3]
+    line_num, line = line_info.split()
+    self.stackshot.line_num = int(line_num)
+    self.stackshot.line = line.strip()
+    
+    fn_name = re.search('<(.+)\+\d+>:', info).group(1)
+    self.stackshot.add_fn_name(fn_name)
+
   def ingest_stepi(self, data):
     line_info = data.split('\n')[0]
     instr_addr = re.search('=> (.+) <.+>:', data.split('\n')[-1]).group(1)
@@ -202,8 +227,6 @@ class GDBParser:
       ''' Stepped into new function '''
       self._new_function = True
       self._new_line = True
-      self._new_frame_loading = True
-      self._new_frame_loaded = False
       self.stackshot.clear_args()
       self.stackshot.clear_locals()
 
@@ -218,8 +241,6 @@ class GDBParser:
       ''' Stepped into new line '''
       self._new_line = True
       if self._new_function:
-        self._new_frame_loading = False
-        self._new_frame_loaded = True
         self._new_function = False
       line_num, line = line_info.split('\t')
       self.stackshot.line = line.strip()
@@ -228,7 +249,6 @@ class GDBParser:
     else:
       ''' Stepped into new assembly instruction in same line '''
       self._new_line = False
-      self._new_frame_loaded = False
       self._new_function = False
       _, line_num, line = line_info.split('\t')
       self.stackshot.line = line.strip()
@@ -266,31 +286,47 @@ class GDBParser:
     rip_addr = re.search('rip at (0x[a-f0-9]+)', rip_line).group(1)
     self._saved_rip_addrs.append(rip_addr)
 
-  def ingest_var_address(self, var_name, data):
-    address = data.split()[-1].strip()
+  def ingest_var_location(self, var_name, data):
+    if re.match('Can\'t take address of \".+\" which isn\'t an lvalue.', data):
+      self.stackshot.set_var_opimized_out(var_name)
+      return
+
+    in_reg_match = \
+      re.match('Address requested for identifier .+ which is in register (\$.+)',
+                data)
+    address = register = None
+    if in_reg_match:
+      register = in_reg_match.group(1)
+    else:
+      address = data.split()[-1].strip()
 
     if var_name in self.stackshot.arg_names():
-      self.stackshot.set_arg_address(var_name,
-                                     address,
-                                     self._saved_rip_addrs[-1])
+      self.stackshot.set_arg_location(self._saved_rip_addrs[-1],
+                                      var_name, address, register)
 
     if var_name in self.stackshot.local_names():
-      self.stackshot.set_local_address(var_name, address)
+      self.stackshot.set_local_location(var_name, address, register)
 
   def ingest_vars(self, var_list, data):
     new_vars = (len(var_list) == 0)
     for line in data.split('\n'):
       name, val = line.split(' = ')
+      name = name.strip()
+      val = val.strip()
       if new_vars:
-        var = self.stackshot.Var(name.strip(), value=val.strip())
+        var = self.stackshot.Var(name, value=val)
         var_list.append(var)
       else:
         var = filter(lambda v: v.name == name, var_list)[0]
-        var.value = val.strip()
-        if not self.stackshot.first_time_in_function():
-          # If we're returning back to this function, all vars were
-          # already set active.
-          var.active = True
+        var.value = val
+        if val == '<optimized out>':
+          var.active = False
+
+      if not self.stackshot.first_time_in_function() and \
+         not val == '<optimized out>':
+        # If we're returning back to this function, all vars were
+        # already set active.
+        var.active = True
 
   def ingest_args(self, data):
     self.ingest_vars(self.stackshot.args, data)
