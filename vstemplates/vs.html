@@ -53,38 +53,34 @@
 
   <div class="registers-container col-md-4">
   <h4 class="section-header">Registers</h4>
-  <table class="fixed_headers">
-    <thead>
+  <table>
+    <tr>
+      <td></td>
+      <td></td>
+      <td><b>Args</b> and Vars</td>
+    </tr>
+    {% for regname in stack.ordered_regs %}
       <tr>
-        <th></th>
-        <th></th>
-        <th><b>Args</b> and Vars</th>
+        <td> {{ regname }} </td>
+        <td>
+          {% if stack.is_changed_register(regname) %}
+            <b>{{ stack.regs[regname] }}</b>
+          {% else %}
+            {{ stack.regs[regname] }}
+          {% endif %}
+        </td>
+        {% for arg in stack.args if arg.register %}
+	  {% if arg.register == regname %}
+	    <td><b>&#60;&#45;&#45; {{ arg.name }} &#61; {{ arg.value }}</b></td>
+	  {% endif %}
+	{% endfor %}
+	{% for var in stack.local_vars if var.register %}
+	  {% if var.register == regname %}
+            <td>&#60;&#45;&#45; {{ var.name }} &#61; {{ var.value }}</td>
+          {% endif %}
+	{% endfor %}
       </tr>
-    </thead>
-    <tbody>
-      {% for regname in stack.ordered_regs %}
-        <tr>
-          <td> {{ regname }} </td>
-          <td>
-            {% if stack.is_changed_register(regname) %}
-              <b>{{ stack.regs[regname] }}</b>
-            {% else %}
-              {{ stack.regs[regname] }}
-            {% endif %}
-          </td>
-	  {% for arg in stack.args if arg.register %}
-	    {% if arg.register == regname %}
-	      <td><b>&#60;&#45;&#45; {{ arg.name }} &#61; {{ arg.value }}</b></td>
-	     {% endif %}
-	  {% endfor %}
-	  {% for var in stack.local_vars if var.register %}
-	    {% if var.register == regname %}
-	      <td>&#60;&#45;&#45; {{ var.name }} &#61; {{ var.value }}</td>
-	    {% endif %}
-	  {% endfor %}
-        </tr>
-      {% endfor %}
-    </tbody>
+    {% endfor %}
   </table>
   </div>
 
@@ -93,9 +89,9 @@
   <table class="fixed_headers">
     <thead>
       <tr>
-        <th>Address</th>
-        <th>Memory Contents</th>
-        <th><b>Args</b> and Vars</th>
+        <td>Address</td>
+        <td>Memory Contents</td>
+        <td><b>Args</b> and Vars</td>
       </tr>
     </thead>
     <tbody>
