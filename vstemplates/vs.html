@@ -57,7 +57,7 @@
 
   <div class="registers-container col-md-4">
   <h4 class="section-header">Registers</h4>
-  <table>
+  <table class="table table-condensed">
     <tr>
       <td></td>
       <td></td>
@@ -73,16 +73,18 @@
             {{ stack.regs[regname] }}
           {% endif %}
         </td>
-        {% for arg in stack.args if arg.register %}
+        <td>
+	{% for arg in stack.args if arg.register %}
 	  {% if arg.register == regname %}
-	    <td><b>&#60;&#45;&#45; {{ arg.name }} &#61; {{ arg.value }}</b></td>
+	    <b>&#60;&#45;&#45; {{ arg.name }} &#61; {{ arg.value }}</b>
 	  {% endif %}
 	{% endfor %}
 	{% for var in stack.local_vars if var.register %}
 	  {% if var.register == regname %}
-            <td>&#60;&#45;&#45; {{ var.name }} &#61; {{ var.value }}</td>
+            &#60;&#45;&#45; {{ var.name }} &#61; {{ var.value }}
           {% endif %}
 	{% endfor %}
+	</td>
       </tr>
     {% endfor %}
   </table>
