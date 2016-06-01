@@ -226,8 +226,11 @@ class StackShot(object):
     self._changed_words.add(address)
     
     for var in self._args + self._local_vars:
-      # TODO: address not on word boundary
-      if var.address == address:
+      if not var.address:
+        continue
+      var_addr_int = int(var.address, 16)
+      addr_int = int(address, 16)
+      if var_addr_int >= addr_int and var_addr_int < addr_int + 8:
         var.active = True
 
   def is_changed_word(self, address):
