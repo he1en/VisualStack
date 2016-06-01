@@ -36,11 +36,11 @@ The `gdb` pipeline is made up of several parts: `gdb_runner`, `gdb_parser`, and 
 
 ## Authors
 
-* **Helen Hastings** is a senior at Stanford University pursuing a Bachelor's of Science in Computer Science with a concentration in Systems. She is a current Co-Director of she++, a nonprofit that works to encourage and empower young women in technology. Helen is also the Professional Development Co-Chair of the Tau Beta Pi Engineering Honors Society. In September, Helen will be starting as a Software Engineer at Affirm, a financial tech company based in San Francisco.
-* **Rachel Mellon** is a senior at Stanford University pursuing a Bachelor's of Science in Computer Science with a concentration in Information and a minor in Spanish. Rachel is a former Co-Director of she++ and a current Co-Director of the she++ ThinkTank project. She is a member of Sigma Delta Pi, an honors society for the study of Hispanic language and culture. In October, Rachel will be starting as a Software Engineer at Google in Mountain View, CA.
+* [**Helen Hastings**](https://github.com/he1en) is a senior at Stanford University pursuing a Bachelor's of Science in Computer Science with a concentration in Systems. She is a current Co-Director of she++, a nonprofit that works to encourage and empower young women in technology. Helen is also the Professional Development Co-Chair of the Tau Beta Pi Engineering Honors Society. In September, Helen will be starting as a Software Engineer at Affirm, a financial tech company based in San Francisco.
+* [**Rachel Mellon**](https://github.com/rbmellon) is a senior at Stanford University pursuing a Bachelor's of Science in Computer Science with a concentration in Information and a minor in Spanish. Rachel is a former Co-Director of she++ and a current Co-Director of the she++ ThinkTank project. She is a member of Sigma Delta Pi, an honors society for the study of Hispanic language and culture. In October, Rachel will be starting as a Software Engineer at Google in Mountain View, CA.
 
 ## Acknowledgments
 
 Special thanks to:
-* Jerry Cain, for advising the project team
+* [Jerry Cain](https://github.com/jerrycainjr), for advising the project team
 * The CS107 teaching staff, for their support & guidance
