@@ -44,7 +44,7 @@ def stepExists(step):
   query_string = 'select exists(select StepNum from StackFrame where StepNum = $stepNum limit 1) as StepExists'
   input_vars = {'stepNum': step}
   q = query(query_string, input_vars)
-  return q[0].StepExists
+  return (int(q[0].StepExists) == 1)
 
 # determines step and step_i based on transition
 def getNextStep(curr_step, curr_step_i, transition):
@@ -74,6 +74,29 @@ def getNextStep(curr_step, curr_step_i, transition):
     else:
       next_step_i += 1
   return next_step, next_step_i
+
+def getLineNum(curr_step, curr_step_i):
+  query_string = 'select LineNum from StackFrame where StepNum = $step_num and StepINum = $stepi_num'
+  input_vars = {'step_num': curr_step, 'stepi_num': curr_step_i}
+  return query(query_string, input_vars)[0].LineNum 
+
+def getMemAddressesForAssembly(curr_step, curr_step_i, transition):
+  q = []
+  if transition == 'stepi_forward':
+    query_string = 'select MemAddr from StackFrame where StepNum = $step_num and StepINum = $stepi_num'
+    input_vars = {'step_num': curr_step, 'stepi_num': curr_step_i}
+    q = query(query_string, input_vars)
+  elif transition == 'step_forward':
+    return None
+  elif transition == 'stepi_back':
+    hop1, hop1_i = getNextStep(curr_step, curr_step_i, transition)
+    hop2, hop2_i = getNextStep(hop1, hop1_i, transition)
+    query_string = 'select MemAddr from StackFrame where StepNum = $step_num and StepINum = $stepi_num'
+    input_vars = {'step_num': hop2, 'stepi_num': hop2_i}
+    q = query(query_string, input_vars)
+  elif transition == 'step_back':
+    return None
+  return set([int(addr.MemAddr,16) for addr in q])
 
 # returns a hydrated version of the StackShot for the input step
 def getContentsForStep(step, step_i, step_direction = None):
@@ -119,7 +142,7 @@ def writeCode(code_lines):
   for i in xrange(len(code_lines)):
     query_list.append('($linenum' + str(i+1) + ',$line' + str(i+1) + ')')
     query_list.append(',')
-    input_vars['linenum'+str(i+1)] = i
+    input_vars['linenum'+str(i+1)] = i+1
     input_vars['line'+str(i+1)] = code_lines[i]
   query_list[-1] = ';'
   return querySuccess(''.join(query_list), input_vars)
