@@ -292,11 +292,11 @@ class GDBParser:
       return
 
     in_reg_match = \
-      re.match('Address requested for identifier .+ which is in register (\$.+)',
+      re.match('Address requested for identifier .+ which is in register \$(.+)',
                 data)
     address = register = None
     if in_reg_match:
-      register = in_reg_match.group(1)
+      register = in_reg_match.group(1).strip()
     else:
       address = data.split()[-1].strip()
 
