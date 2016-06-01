@@ -131,6 +131,9 @@
 	      <td>&#60;&#45;&#45; {{ var.name }} &#61; {{ var.value }}</td>
 	    {% endif %}
 	  {% endfor %}
+	  {% if stack.regs['rsp']|hex_to_int == k|hex_to_int %}
+	      <td>&#60;&#45;&#45; rsp </td>
+	  {% endif %}
 	</tr>
       {% endfor %}
     </tbody>
