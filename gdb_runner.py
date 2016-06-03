@@ -31,9 +31,11 @@ class GDBRunner:
 
     self.parser = gdb_parser.GDBParser()
     self.running = False
+    self.forced_finish = False
 
     self.filename = self.c_filename.replace('.c', '') # compiled file
     subprocess.call(['gcc', self.c_filename, '-o', self.filename, '-Og', '-g'])
+#    subprocess.call(['gcc', self.c_filename, '-o', self.filename, '-g'])
 
     self.output_file = open('output_' + self.filename, 'w')
     self.proc = subprocess.Popen(['gdb', self.filename], \
@@ -57,12 +59,20 @@ class GDBRunner:
       output += self.output_queue.get()
       if 'program is not being run' in output:
         self.running = False
+      if 'exited normally]' in output:
+        self.running = False
 
-    if command == self.parser.step_command and 'exit(0)' in output:
+    if command == self.parser.step_command and 'in exit@plt' in output:
       self.running = False
 
     self.output_file.write(output)
+    if not self.running:
+      return
+
     self.parser.parse(output, command)
+    if self.parser.failed:
+      self.send('finish')
+      self.forced_finish = True
 
   def send(self, command):
     self.output_file.write(command + '\n')
@@ -90,35 +100,30 @@ class GDBRunner:
   def capture_stack(self):
     for command in self.parser.get_context_commands():
       self.send(command)
-    if self.parser._failed:
-      self.send('finish')
+    
+    if self.forced_finish:
       return
+
     for command in self.parser.examine_commands():
       self.send(command)
 
   def next(self):
     if not self.running:
-      return None
-   
-    self.send(self.parser.step_command)
-    if self.parser._failed:
-      self.send('finish')
       return
 
+    if not self.forced_finish:
+      self.send(self.parser.step_command)
+    self.forced_finish = False
+
     self.capture_stack()
-    if self.parser._failed:
-      self.send('finish')
-      return
 
     if self.parser.first_time_new_function():
       vsdb.writeAssembly(self.parser.fn_instructions)
-
     if self.parser.new_line:
       self.step_num += 1
       self.step_i = 0
     else:
       self.step_i += 1    
-
     vsdb.runnerStep(self.step_num, self.step_i, self.parser.get_stackshot())
 
   def run_to_completion(self):
