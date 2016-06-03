@@ -117,7 +117,7 @@ class GDBRunner:
 
     self.capture_stack()
 
-    if self.parser.first_time_new_function():
+    if self.parser.new_function_first_entry():
       vsdb.writeAssembly(self.parser.fn_instructions)
     if self.parser.new_line:
       self.step_num += 1

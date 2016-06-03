@@ -21,8 +21,10 @@ class GDBParser:
   def __init__(self):
     self._new_line = True
     self._new_function = True
+    self._re_entered_fn = False
 
     self._fn_instructions = {} # line_num -> {addr -> instruction}
+    self._functions = [] # 'stack' of (fn_name, first instruction addr) tuples
     self._saved_frame_boundaries = [] # 'stack' of frame boundaries
     self._saved_rip_addrs = [] # 'stack' of locations of rips
 
@@ -35,8 +37,8 @@ class GDBParser:
   def new_line(self):
     return self._new_line
 
-  def first_time_new_function(self):
-    return self._new_function and self.stackshot.first_time_in_function()
+  def new_function_first_entry(self):
+    return self._new_function and not self._re_entered_fn
 
   @property
   def fn_instructions(self):
@@ -68,13 +70,13 @@ class GDBParser:
     commands.append('info registers')
 
     if self._new_function:
-      commands.append('disassemble /m %s' % self.stackshot.current_fn_name())
+      commands.append('disassemble /m %s' % self._functions[-1][0])
 
     commands.append('info args')
     commands.append('info locals')
 
     # get new frame boundary and rip location if in new leaf function
-    if self.first_time_new_function():
+    if self.new_function_first_entry():
       commands.append('info frame')
 
     return commands
@@ -184,9 +186,9 @@ class GDBParser:
     line_num, line = line_info.split('\t')
     self.stackshot.line = line.strip()
     self.stackshot.line_num = int(line_num.strip())
-    self.stackshot.add_fn_name('main')
     instr_addr = re.search('=> (.+) <.+>:', data.split('\n')[-1]).group(1)
     self.stackshot.curr_instr_addr = instr_addr
+    self._functions.append(('main', instr_addr))
 
   def ingest_finish(self, data):
     if data == '"finish" not meaningful in the outermost frame.':
@@ -203,29 +205,38 @@ class GDBParser:
 
     self._new_line = True
     fn_name = re.search('<(.+)\+\d+>:', instr_info).group(1)
-    if fn_name != self.stackshot.fn_names[-1]:
+    if fn_name != self._functions[-1][0]:
       ''' We stepped out of the erroring function into a different
           function than we were in before '''
-      self.clean_data_for_new_fn(fn_name, forced_finish=True)
+      self.clean_data_for_new_fn(fn_name, instr_addr, forced_finish=True)
     
     line_num, line = line_info.split('\t')
     self.stackshot.line_num = int(line_num)
     self.stackshot.line = line.strip()
 
-  def clean_data_for_new_fn(self, fn_name, forced_finish=False):
+  def clean_data_for_new_fn(self, fn_name, instr_addr, forced_finish=False):
+    self._re_entered_fn = False
     self._new_function = True
     self._new_line = True
     self.stackshot.clear_args()
     self.stackshot.clear_locals()
-    self.stackshot.add_fn_name(fn_name)
 
-    if not self.first_time_new_function():
-      # we are re-entering a calling function
+    old_frame_fn = self._functions[-1]
+    if fn_name == old_frame_fn[0] and instr_addr != old_frame_fn[1]:
+      # stepped into previous function, we know because same name and we
+      # didn't start at the beginning so it's not recursion
+      self._re_entered_fn = True
       if not forced_finish:
+        # this won't work if we forced a finish after ingest_frame
+        # succeeded for a step
         self._saved_frame_boundaries.pop()
         self._saved_rip_addrs.pop()
+        self._functions.pop()
       self.stackshot.frame_top = self._saved_frame_boundaries[-1]
       self.stackshot.parent_frame_top = self._saved_frame_boundaries[-2]
+    else:
+      self._functions.append((fn_name, instr_addr))
+
 
   def stepped_out_of_src_file(self, data):
     flat_output = data.join('')
@@ -239,7 +250,7 @@ class GDBParser:
     if self.stepped_out_of_src_file(data):
       self.failed = True
       return
-    print 'INGESTING', data
+    # print 'INGESTING: <', data, '>'
 
     line_info = data.split('\n')[0]
     instr_addr = re.search('=> (.+) <.+>:', data.split('\n')[-1]).group(1)
@@ -259,7 +270,7 @@ class GDBParser:
           self.stackshot.line = line_contents.split('\t')[-1]
           break
 
-      self.clean_data_for_new_fn(fn_name)
+      self.clean_data_for_new_fn(fn_name, instr_addr)
 
     elif line_info[:2] != '0x':
       ''' Stepped into new line '''
@@ -299,7 +310,7 @@ class GDBParser:
 
     frame_boundary = re.search('frame at (0x[a-f0-9]+):', frame_line).group(1)
     self._saved_frame_boundaries.append(frame_boundary)
-    if self.stackshot.fn_names[-1] == 'main':
+    if self._functions[-1][0] == 'main':
       self._saved_frame_boundaries.append(frame_boundary)
       self.stackshot.frame_top = frame_boundary
 
@@ -325,7 +336,10 @@ class GDBParser:
 
     if var_name in self.stackshot.arg_names():
       self.stackshot.set_arg_location(self._saved_rip_addrs[-1],
-                                      var_name, address, register)
+                                      var_name,
+                                      address,
+                                      register,
+                                      self._functions[-1] == 'main')
 
     if var_name in self.stackshot.local_names():
       self.stackshot.set_local_location(var_name, address, register)
@@ -345,8 +359,7 @@ class GDBParser:
         if val == '<optimized out>':
           var.active = False
 
-      if not self.stackshot.first_time_in_function() and \
-         not val == '<optimized out>':
+      if self._re_entered_fn and not val == '<optimized out>':
         # If we're returning back to this function, all vars were
         # already set active.
         var.active = True
