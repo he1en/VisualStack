@@ -131,7 +131,7 @@ def getLocalCode(line_num):
   if line_num is None:
     return None
   query_string = 'select LineContents from Code order by LineNum asc limit $start, $end'
-  input_vars = {'start': str(max(line_num-3,0)), 'end': 5} 
+  input_vars = {'start': str(max(line_num-5,0)), 'end': 9} 
   code_contents = query(query_string, input_vars)
   return [l.LineContents for l in code_contents] 
 
