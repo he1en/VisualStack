@@ -15,6 +15,7 @@ import stackshot
 
 REDZONE_SIZE = 16
 WORD = 8
+NUM_REGS = 17
 
 class GDBParser:
 
@@ -68,6 +69,7 @@ class GDBParser:
     ''' Called after gdb made a stepi '''
     commands = []
     commands.append('info registers')
+    commands.append('print $eflags')
 
     if self._new_function:
       commands.append('disassemble /m %s' % self._functions[-1][0])
@@ -116,6 +118,7 @@ class GDBParser:
       '^run$': self.ingest_run,
       '^stepi$': self.ingest_stepi,
       '^info registers$': self.ingest_registers,
+      '^print \$eflags$': self.ingest_flags,
       '^info sources$': self.ingest_sources,
       '^info source$': self.ingest_main_file,
       '^info args$': self.ingest_args,
@@ -176,10 +179,15 @@ class GDBParser:
 
   def ingest_registers(self, data):
     self.stackshot.clear_changed_regs()
-    for register_output in data.split('\n')[:16]: # only want first 16
+    for register_output in data.split('\n')[:NUM_REGS]:
       register, contents = register_output.split()[:2]
       if self.stackshot.regs[register] != contents:
         self.stackshot.set_register(register, contents)
+
+  def ingest_flags(self, data):
+    flags = data.split(' = ')[-1]
+    self.stackshot.set_register('eflags', flags)
+
 
   def ingest_run(self, data):
     line_info = data.split('\n')[-3]
