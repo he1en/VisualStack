@@ -44,8 +44,6 @@ class StackShot(object):
     self._main_file = None
     self._src_files = []
 
-    self._fn_names = []
-
     self._curr_instr_addr = None
 
   # invoke on a new stackshot instance
@@ -146,14 +144,14 @@ class StackShot(object):
     var.value = '<optimized out>' 
     var.active = False
 
-  def set_arg_location(self, saved_rip_addr, arg_name, address=None, register=None):
+  def set_arg_location(self, saved_rip_addr, arg_name,
+                       address=None, register=None, in_main=False):
     arg = filter(lambda a: a.name == arg_name, self._args)[0]
 
     if address:
       arg.address = address
       addr_int = int(address, 16)
-      if addr_int > int(saved_rip_addr, 16) or \
-         self._fn_names[-1] == 'main':
+      if addr_int > int(saved_rip_addr, 16) or in_main:
         # arg was passed on the stack, so its value is already correct
         arg.active = True
         if addr_int > int(self._frame_top, 16):
@@ -178,9 +176,6 @@ class StackShot(object):
   def local_names(self):
     return [local.name for local in self._local_vars]
       
-  def first_time_in_function(self):
-    return self._fn_names.count(self._fn_names[-1]) == 1
-
 ######### GETTERS AND SETTERS ############
   @property
   def line(self):
@@ -282,16 +277,6 @@ class StackShot(object):
 
   def add_src_file(self, filename):
     self._src_files.append(filename)
-
-  @property
-  def fn_names(self):
-    return self._fn_names
-
-  def current_fn_name(self):
-    return self._fn_names[-1]
-
-  def add_fn_name(self, fnname):
-    self._fn_names.append(fnname)
 
   @property
   def curr_instr_addr(self):
