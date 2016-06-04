@@ -46,7 +46,7 @@
         {% endif %}
         </div>
       {% elif predecessors is none and line.split()[0]|int == prevlinenum%}
-        <span class="bg-info">{{ line }}</span>
+        <span class="bg-info">{{ line }}</span><br>
       {% else %}
         <span>{{ line}}</span><br>
       {% endif %}
