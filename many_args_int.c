@@ -19,6 +19,7 @@ long myfunc(long a, long b, long c, long d, long e, long f, long g,
 }
 
 int main (int argc, char *argv[]) {
-  myfunc(1, 2, 3, 4, 5, 6, 7, 8);
+  int c = myfunc(1, 2, 3, 4, 5, 6, 7, 8);
+  printf("%d\n", c);
   exit(0);
 }

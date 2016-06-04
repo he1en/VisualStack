@@ -1,11 +1,12 @@
-########################################
+#######################################
 # Stack Shot Class
  
 ########################################
 import re
 
 regs = ['rsp', 'rbp', 'rax', 'rbx', 'rcx', 'rdx', 'rsi', 'rdi',
-        'r8', 'r9', 'r10', 'r11', 'r12', 'r13', 'r14', 'r15']
+        'r8', 'r9', 'r10', 'r11', 'r12', 'r13', 'r14', 'r15',
+        'rip', 'eflags']
 
 REDZONE_SIZE = 16
 WORD = 8
@@ -13,11 +14,13 @@ WORD = 8
 class StackShot(object):
 
   class Var:
-    def __init__(self, name, value=None, address=None, active=False):
+    def __init__(self, name, value=None, address=None, register=None,
+                 active=False):
       self.name = name
       self.value = value
       self.address = address
       self.active = active
+      self.register = register
 
   def __init__(self):
     self._line = None
@@ -31,15 +34,16 @@ class StackShot(object):
     self._ordered_addresses = []
     self._changed_words = set()
 
-    self._saved_rbp = None
     self._args = []
-    self._highest_arg_addr = None
+    self._frame_top = None
+    self._parent_frame_top = None
+    self._frame_bottom = None
+    self._rip_addr = None
+
     self._local_vars = []
 
     self._main_file = None
     self._src_files = []
-
-    self._fn_names = []
 
     self._curr_instr_addr = None
 
@@ -52,17 +56,21 @@ class StackShot(object):
     self._line = stackframe[0].LineContents
     self._line_num = stackframe[0].LineNum
     self._curr_instr_addr = stackframe[0].MemAddr
-    self._highest_arg_addr = stackframe[0].HighestArgAddr
+    self._frame_top = stackframe[0].FrameTop
+    self._parent_frame_top = stackframe[0].ParentFrameTop
+    self._frame_bottom = stackframe[0].FrameBottom
 
     for i in xrange(len(registers)):
       self._regs[registers[i].RegName] = registers[i].RegContents
       reg_s = registers[i].StepNum
       reg_si = registers[i].StepINum
-      if step_direction is not None and  "i_" in step_direction: # stepi_forward or stepi_back
+      if step_direction is not None and  "i_" in step_direction:
+        # stepi_forward or stepi_back
         if reg_s == step_ and reg_si == stepi_:
           self._changed_regs.add(registers[i].RegName)
       else:
-        if (reg_s == step_-1 and reg_si != 0) or (reg_s == step_ and reg_si == stepi_):
+        if (reg_s == step_-1 and reg_si != 0) or \
+           (reg_s == step_ and reg_si == stepi_):
           self._changed_regs.add(registers[i].RegName)
 
     for i in xrange(len(stackwords)):
@@ -73,7 +81,8 @@ class StackShot(object):
         if sw_s == step_ and sw_si == stepi_:
           self._changed_words.add(stackwords[i].MemAddr)
       else:
-        if (sw_s == step_-1 and sw_si != 0) or (sw_s == step_ and sw_si == stepi_):
+        if (sw_s == step_-1 and sw_si != 0) or \
+           (sw_s == step_ and sw_si == stepi_):
           self._changed_words.add(stackwords[i].MemAddr)
     self._ordered_addresses = sorted(self._words.keys(),
                                     key = lambda addr: int(addr, 16),
@@ -81,12 +90,14 @@ class StackShot(object):
 
     for i in xrange(len(local_vars)):
       self._local_vars.append(self.Var(local_vars[i].VarName,
-                                      local_vars[i].VarValue,
-                                      local_vars[i].VarAddr))
+                                       local_vars[i].VarValue,
+                                       local_vars[i].VarAddr,
+                                       local_vars[i].VarReg))
     for i in xrange(len(arguments)):
       self._args.append(self.Var(arguments[i].ArgName,
-                                arguments[i].ArgValue,
-                                arguments[i].ArgAddr))
+                                 arguments[i].ArgValue,
+                                 arguments[i].ArgAddr,
+                                 arguments[i].ArgReg))
 
 
   def stringify(self):
@@ -108,54 +119,64 @@ class StackShot(object):
   def frame_addresses(self):
     ''' Collects all stack addresses in current frame in descending order. '''
     addresses = []
-    rbp_int = int(self._regs['rbp'], 16)
+    top_int = int(self._parent_frame_top, 16)
     rsp_int = int(self._regs['rsp'], 16)
     redzone_int = rsp_int - REDZONE_SIZE * WORD
-    saved_rbp_int = int(self._saved_rbp, 16)
 
-    # Collect memory above base pointer until saved base pointer
-    if saved_rbp_int == 0:
-      # If saved_rbp is 0x0, we are in main.
-      num_above = 0
-    else:
-      num_above = (saved_rbp_int - rbp_int) / WORD
+    num_words = (top_int - redzone_int) / WORD
 
-    for i in range(num_above):
-      addresses.append(hex(saved_rbp_int - i * WORD))
-      
-    addresses.append(self._regs['rbp'])
-
-    # Collect memory below base pointer until bottom of red zone
-    num_below = (rbp_int - redzone_int) / WORD
-    for i in range(1, num_below + 1):
-      addresses.append(hex(rbp_int - i * WORD))
-
+    for i in range(num_words):
+      addresses.append(hex(top_int - i * WORD))
+    
     return addresses
 
-  def set_arg_address(self, arg_name, address):
+  def set_var_opimized_out(self, var_name):
+    var = None
+    
+    if var_name in self.arg_names():
+      var_match = filter(lambda a: a.name == var_name, self._args)
+      if var_match:
+        var = var_match[0]
+    elif var_name in self.local_names():
+      var_match = filter(lambda l: l.name == var_name, self._local_vars)
+      if var_match:
+        var = var_match[0]
+    
+    var.value = '<optimized out>' 
+    var.active = False
+
+  def set_arg_location(self, saved_rip_addr, arg_name,
+                       address=None, register=None, in_main=False):
     arg = filter(lambda a: a.name == arg_name, self._args)[0]
-    arg.address = address
-    if int(address, 16) > int(self._highest_arg_addr, 16):
-      self._highest_arg_addr = address
-    if int(address, 16) > int(self._regs['rbp'], 16) or \
-       self._fn_names[-1] == 'main':
-      # arg was passed on the stack, so its value is already correct
+
+    if address:
+      arg.address = address
+      addr_int = int(address, 16)
+      if addr_int > int(saved_rip_addr, 16) or in_main:
+        # arg was passed on the stack, so its value is already correct
+        arg.active = True
+        if addr_int > int(self._frame_top, 16):
+          self._frame_top = hex(addr_int + 8)
+
+    if register:
+      arg.register = register
       arg.active = True
 
   def arg_names(self):
     return [arg.name for arg in self._args]
 
-  def set_local_address(self, local_name, address):
+  def set_local_location(self, local_name, address=None, register=None):
     for local in self._local_vars:
       if local.name == local_name:
-        local.address = address
+        if address:
+          local.address = address
+        if register:
+          local.register = register
+          local.active = True
 
   def local_names(self):
     return [local.name for local in self._local_vars]
       
-  def first_time_in_function(self):
-    return self._fn_names.count(self._fn_names[-1]) == 1
-
 ######### GETTERS AND SETTERS ############
   @property
   def line(self):
@@ -212,14 +233,6 @@ class StackShot(object):
     return address in self._changed_words
 
   @property
-  def saved_rbp(self):
-    return self._saved_rbp
-
-  @saved_rbp.setter
-  def saved_rbp(self, value):
-    self._saved_rbp = value
-
-  @property
   def args(self):
     return self._args
 
@@ -228,12 +241,28 @@ class StackShot(object):
     return self._local_vars
 
   @property
-  def highest_arg_addr(self):
-    return self._highest_arg_addr
+  def frame_top(self):
+    return self._frame_top
 
-  @highest_arg_addr.setter
-  def highest_arg_addr(self, value):
-    self._highest_arg_addr = value
+  @frame_top.setter
+  def frame_top(self, value):
+    self._frame_top = value
+
+  @property
+  def parent_frame_top(self):
+    return self._parent_frame_top
+
+  @parent_frame_top.setter
+  def parent_frame_top(self, value):
+    self._parent_frame_top = value
+
+  @property
+  def frame_bottom(self):
+    return self._frame_bottom
+
+  @frame_bottom.setter
+  def frame_bottom(self, value):
+    self._frame_bottom = value
 
   @property
   def main_file(self):
@@ -249,16 +278,6 @@ class StackShot(object):
 
   def add_src_file(self, filename):
     self._src_files.append(filename)
-
-  @property
-  def fn_names(self):
-    return self._fn_names
-
-  def current_fn_name(self):
-    return self._fn_names[-1]
-
-  def add_fn_name(self, fnname):
-    self._fn_names.append(fnname)
 
   @property
   def curr_instr_addr(self):

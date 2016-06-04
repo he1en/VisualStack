@@ -8,7 +8,7 @@ fi
 clear
 
 sqlite3 VisualStack.db < vscreate.sql;
-python vsbase.py 8080 $1
+python vsbase.py 7080 $1
 
 #if which xdg-open > /dev/null
 #then

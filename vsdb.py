@@ -131,7 +131,7 @@ def getLocalCode(line_num):
   if line_num is None:
     return None
   query_string = 'select LineContents from Code order by LineNum asc limit $start, $end'
-  input_vars = {'start': str(max(line_num-3,0)), 'end': 5} 
+  input_vars = {'start': str(max(line_num-5,0)), 'end': 9} 
   code_contents = query(query_string, input_vars)
   return [l.LineContents for l in code_contents] 
 
@@ -155,7 +155,7 @@ def setStep(curr_step, curr_step_i):
 # never invoked by clients of this module
 # adds input contents (StackShot) into the db for the input step_num
 def addStep(step_num, step_i_num, contents):
-  query_string = 'insert into StackFrame values($stepNum, $stepINum, $linenum, $line, $memAddr, $highestArgAddr)'
+  query_string = 'insert into StackFrame values($stepNum, $stepINum, $linenum, $line, $memAddr, $frameTop, $parentFrameTop, $frameBottom)'
 
   input_vars = {}
   input_vars['stepNum'] = step_num
@@ -163,7 +163,9 @@ def addStep(step_num, step_i_num, contents):
   input_vars['linenum'] = contents.line_num
   input_vars['line'] = contents.line
   input_vars['memAddr'] = contents.curr_instr_addr
-  input_vars['highestArgAddr'] = contents.highest_arg_addr
+  input_vars['frameTop'] = contents.frame_top
+  input_vars['parentFrameTop'] = contents.parent_frame_top
+  input_vars['frameBottom'] = contents.frame_bottom
   db.query(query_string, input_vars)
 
   for rname, rcontents in contents.regs.iteritems():
@@ -177,17 +179,23 @@ def addStep(step_num, step_i_num, contents):
       query_string = 'insert into StackWordsDelta values($stepNum, $stepINum, $addr, $mem)'
       input_vars = {'stepNum': step_num, 'stepINum': step_i_num, 'addr': addr, 'mem': w}
       db.query(query_string, input_vars)
+
   for i, var in enumerate(contents.local_vars):
     if not var.active:
       continue
-    query_string = 'insert into LocalVars values($stepNum, $stepINum, $varName, $varValue, $varAddr)'
-    input_vars = {'stepNum': step_num, 'stepINum': step_i_num, 'varName': var.name, 'varValue': var.value, 'varAddr': var.address}
+    query_string = 'insert into LocalVars values($stepNum, $stepINum, $varName, $varValue, $varAddr, $varReg)'
+    input_vars = {'stepNum': step_num, 'stepINum': step_i_num,
+                  'varName': var.name, 'varValue': var.value,
+                  'varAddr': var.address, 'varReg': var.register}
     db.query(query_string, input_vars) 
+
   for i, arg in enumerate(contents.args):
     if not arg.active:
       continue
-    query_string = 'insert into FnArguments values($stepNum, $stepINum, $argName, $argValue, $argAddr)'
-    input_vars = {'stepNum': step_num, 'stepINum': step_i_num, 'argName': arg.name, 'argValue': arg.value, 'argAddr': arg.address}
+    query_string = 'insert into FnArguments values($stepNum, $stepINum, $argName, $argValue, $argAddr, $argReg)'
+    input_vars = {'stepNum': step_num, 'stepINum': step_i_num,
+                  'argName': arg.name, 'argValue': arg.value,
+                  'argAddr': arg.address, 'argReg': arg.register}
     db.query(query_string, input_vars)
 
 # adds corresponding assembly for line in currstep to db

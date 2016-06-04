@@ -10,11 +10,12 @@ DROP TABLE if exists CurrStep;
 
 CREATE TABLE Code(LineNum INT PRIMARY KEY, LineContents TEXT);
 CREATE TABLE Assembly(LineNum INT REFERENCES Code(LineNum), MemAddr TEXT, InstrContents TEXT, UNIQUE(MemAddr));
-CREATE TABLE StackFrame(StepNum INT, StepINum INT, LineNum REFERENCES Code(LineNum), LineContents TEXT, MemAddr TEXT REFERENCES Assembly(MemAddr), HighestArgAddr TEXT, UNIQUE(StepNum, StepINum));
+CREATE TABLE StackFrame(StepNum INT, StepINum INT, LineNum REFERENCES
+Code(LineNum), LineContents TEXT, MemAddr TEXT REFERENCES Assembly(MemAddr), FrameTop TEXT, ParentFrameTop TEXT, FrameBottom TEXT, UNIQUE(StepNum, StepINum));
 CREATE TABLE StackWordsDelta(StepNum INT, StepINum INT, MemAddr TEXT, MemContents TEXT, FOREIGN KEY(StepNum, StepINum) REFERENCES StackFrame(StepNum, StepINum));
 CREATE TABLE RegistersDelta(StepNum INT, StepINum INT, RegName TEXT, RegContents TEXT, FOREIGN KEY(StepNum, StepINum) REFERENCES StackFrame(StepNum, StepINum));
-CREATE TABLE LocalVars(StepNum INT, StepINum INT, VarName TEXT, VarValue TEXT, VarAddr TEXT, FOREIGN KEY(StepNum, StepINum) REFERENCES StackFrame(StepNum, StepINum));
-CREATE TABLE FnArguments(StepNum INT, StepINum INT, ArgName TEXT, ArgValue TEXT, ArgAddr TEXT, FOREIGN KEY(StepNum, StepINum) REFERENCES StackFrame(StepNum, StepINum));
+CREATE TABLE LocalVars(StepNum INT, StepINum INT, VarName TEXT, VarValue TEXT, VarAddr TEXT, VarReg TEXT, FOREIGN KEY(StepNum, StepINum) REFERENCES StackFrame(StepNum, StepINum));
+CREATE TABLE FnArguments(StepNum INT, StepINum INT, ArgName TEXT, ArgValue TEXT, ArgAddr TEXT, ArgReg TEXT, FOREIGN KEY(StepNum, StepINum) REFERENCES StackFrame(StepNum, StepINum));
 CREATE TABLE CurrStep(StepNum INT, StepINum INT, FOREIGN KEY(StepNum, StepINum) REFERENCES StackFrame(StepNum, StepINum));
 
 INSERT into CurrStep values (0, 0);
